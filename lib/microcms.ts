@@ -12,3 +12,20 @@ export const client = createClient({
   serviceDomain,
   apiKey,
 });
+
+// ⭐ ブログ一覧を取得する関数（追加）
+export async function getBlogs() {
+  const data = await client.get({
+    endpoint: "blogs",
+  });
+  return data;
+}
+
+// ⭐ ブログ詳細を取得する関数（必要なら）
+export async function getBlog(id: string) {
+  const data = await client.get({
+    endpoint: "blogs",
+    contentId: id,
+  });
+  return data;
+}
