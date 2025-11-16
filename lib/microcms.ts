@@ -1,31 +1,70 @@
+/* ================================
+   APIの置き場
+================================ */
+
 import { createClient } from "microcms-js-sdk";
 
-// Next.js Turbopack環境では process.env を通さず直接設定する
 const serviceDomain = "myhobbycoffee";
 const apiKey = "ug0a2EO590TjPuQgzXI6q1FyBETwc7gEaRJt";
 
-if (!serviceDomain || !apiKey) {
-  throw new Error("Missing microCMS credentials");
-}
-
+// microCMSクライアント
 export const client = createClient({
   serviceDomain,
   apiKey,
 });
 
-// ⭐ ブログ一覧を取得する関数（追加）
+/* ================================
+   ブログ用 API
+================================ */
 export async function getBlogs() {
-  const data = await client.get({
+  return await client.get({
     endpoint: "blogs",
+    queries: {
+      fields: "id,title,eyecatch",
+    },
   });
-  return data;
 }
 
-// ⭐ ブログ詳細を取得する関数（必要なら）
 export async function getBlog(id: string) {
-  const data = await client.get({
+  return await client.get({
     endpoint: "blogs",
     contentId: id,
+    queries: {
+      fields: "id,title,content,eyecatch,category",
+    },
   });
-  return data;
 }
+
+/* ================================
+   メニュー（コーヒー豆）一覧
+================================ */
+export async function getMenuAll() {
+  return await client.getList({
+    endpoint: "menu",
+    queries: {
+      limit: 100,
+      orders: "-publishedAt",
+    },
+  });
+}
+
+/* ================================
+  おすすめの豆（isRecommended=true）
+================================ */
+export async function getRecommendedMenu() {
+  return await client.getList({
+    endpoint: "menu",
+    queries: {
+      filters: "isRecommended[equals]true",
+      limit: 3,
+      orders: "-publishedAt",
+    },
+  });
+}
+
+/* ================================
+  画像URL（fallback付き）
+================================ */
+export const getImageUrl = (url?: string) => {
+  return url ? url : "/no_image.jpg"; // ← これが正解
+};

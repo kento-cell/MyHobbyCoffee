@@ -1,17 +1,23 @@
+/* ① フォント読み込み（必ず一番上） */
+@font-face {
+  font-family: "MontserratSubrayada-Bold";
+  font-family: "MontserratSubrayada-Regular";
+  src: url("/fonts/MontserratSubrayada-Bold.ttf") format("truetype");
+  src: url("/fonts/MontserratSubrayada-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* ② Tailwind 読み込み */
 @import "tailwindcss";
 
+/* ③ CSS variables */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* ④ カラーモード */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -19,8 +25,74 @@
   }
 }
 
+/* ⑤ グローバル設定 */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ⑥ カスタムフォント + 縁取り */
+.text-outline {
+  font-family: "MontserratSubrayada-Regular", sans-serif;
+  color: #32cd32;
+
+  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000,
+    2px 2px 0 #000;
+
+  /* 色分け部分 */
+  .logo-my {
+    color: #32cd32; /* ライムグリーン */
+  }
+
+  .logo-hobby {
+    color: #ff7070; /* 淡い赤 */
+  }
+
+  .logo-coffee {
+    color: #c47a2c; /* コーヒー豆の茶色 */
+  }
+}
+@keyframes fade-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide {
+  animation: fade-slide 1.2s ease-out forwards;
+}
+/* ▼ フェード＋下からスライドのアニメーション ▼ */
+@keyframes fade-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide {
+  animation: fade-slide 1s ease-out forwards;
+}
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.8s ease-out forwards;
 }

@@ -3,20 +3,34 @@ import { getBlog } from "@/lib/microcms";
 export default async function BlogDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  //console.log("params:", params); // ← デバッグ
+  const { id } = await params;
 
-  const blog = await getBlog(params.id);
+  const blog = await getBlog(id);
+  console.log("BLOG DATA:", JSON.stringify(blog, null, 2));
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
+      {/* タイトル */}
       <h1 className="text-3xl font-bold mb-4">{blog.title}</h1>
-      <p className="text-gray-500 mb-6">{blog.date}</p>
 
-      <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-        {blog.body}
-      </div>
+      {/* 日付（あれば） */}
+      {blog.date && <p className="text-gray-500 mb-6">{blog.date}</p>}
+
+      {/* アイキャッチ */}
+      {blog.eyecatch?.url && (
+        <img
+          src={blog.eyecatch.url}
+          alt="eyecatch"
+          className="w-full rounded-lg mb-6"
+        />
+      )}
+
+      <div
+        className="prose prose-lg max-w-none"
+        dangerouslySetInnerHTML={{ __html: blog.content }}
+      />
     </div>
   );
 }
