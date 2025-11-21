@@ -1,91 +1,55 @@
-/* ① フォント読み込み（必ず一番上） */
-@font-face {
-  font-family: "MontserratSubrayada-Bold";
-  font-family: "MontserratSubrayada-Regular";
-  src: url("/fonts/MontserratSubrayada-Bold.ttf") format("truetype");
-  src: url("/fonts/MontserratSubrayada-Regular.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
-
-/* ② Tailwind 読み込み */
 @import "tailwindcss";
 
-/* ③ CSS variables */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-lime: #a4de02;
+  --color-text: #222222;
+  --color-muted: #f5f5f5;
+  --color-border: #e6e6e6;
 }
 
-/* ④ カラーモード */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
-/* ⑤ グローバル設定 */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-muted);
+  color: var(--color-text);
+  font-family: var(--font-noto), var(--font-inter), system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.01em;
 }
 
-/* ⑥ カスタムフォント + 縁取り */
-.text-outline {
-  font-family: "MontserratSubrayada-Regular", sans-serif;
-  color: #32cd32;
-
-  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000,
-    2px 2px 0 #000;
-
-  /* 色分け部分 */
-  .logo-my {
-    color: #32cd32; /* ライムグリーン */
-  }
-
-  .logo-hobby {
-    color: #ff7070; /* 淡い赤 */
-  }
-
-  .logo-coffee {
-    color: #c47a2c; /* コーヒー豆の茶色 */
-  }
-}
-@keyframes fade-slide {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+h1,
+h2,
+h3 {
+  font-family: var(--font-inter), var(--font-noto), sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
-.animate-fade-slide {
-  animation: fade-slide 1.2s ease-out forwards;
-}
-/* ▼ フェード＋下からスライドのアニメーション ▼ */
-@keyframes fade-slide {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+a {
+  color: inherit;
 }
 
-.animate-fade-slide {
-  animation: fade-slide 1s ease-out forwards;
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
 }
+
+::selection {
+  background: rgba(164, 222, 2, 0.32);
+}
+
+.prose img {
+  border-radius: 1rem;
+}
+
 @keyframes fade-up {
   0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(24px);
   }
   100% {
     opacity: 1;
@@ -94,5 +58,5 @@ body {
 }
 
 .animate-fade-up {
-  animation: fade-up 0.8s ease-out forwards;
+  animation: fade-up 1s ease-out forwards;
 }

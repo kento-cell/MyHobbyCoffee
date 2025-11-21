@@ -1,61 +1,165 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { client } from "@/lib/microcms";
+import { WeightSelector } from "../../_components/weight-selector";
+import { getImageUrl, getMenu } from "@/lib/microcms";
 
-export default async function MenuDetailPage(props: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await props.params;
+export const revalidate = 120;
 
-  let data;
+const formatPrice = (price?: number) =>
+  typeof price === "number"
+    ? `¥${price.toLocaleString()}`
+    : "価格はお問い合わせください";
+
+const fetchMenu = async (id: string) => {
   try {
-    data = await client.get({
-      endpoint: "menu",
-      contentId: id,
-    });
-  } catch (e) {
-    return notFound();
+    return await getMenu(id);
+  } catch {
+    return null;
+  }
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const data = await fetchMenu(params.id);
+  if (!data) {
+    return { title: "メニューが見つかりません | MyHobbyCoffee" };
+  }
+
+  return {
+    title: `${data.name} | MyHobbyCoffee`,
+    description: data.description || "スペシャルティコーヒー豆の詳細ページ",
+    openGraph: {
+      title: data.name,
+      description: data.description || "",
+      images: [{ url: getImageUrl(data.image?.url) }],
+    },
+  };
+}
+
+export default async function MenuDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const data = await fetchMenu(params.id);
+
+  if (!data) {
+    notFound();
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-16">
-      {/* 商品画像（代替画像対応） */}
-      <Image
-        src={data.image?.url || "/no_image.jpg"}
-        alt={data.name}
-        width={800}
-        height={500}
-        className="w-full h-64 object-cover rounded-xl shadow mb-8"
-      />
-
-      <h1 className="text-3xl font-bold">{data.name}</h1>
-
-      {/* 情報ボックス */}
-      <div className="mt-6 p-5 bg-white border border-gray-200 rounded-xl shadow-sm space-y-2">
-        {data.origin && <p className="text-gray-700">産地：{data.origin}</p>}
-        {data.roast && <p className="text-gray-700">焙煎度：{data.roast}</p>}
-      </div>
-
-      {/* 価格ボックス */}
-      <div className="mt-6 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
-        <p className="text-2xl font-bold text-black">¥{data.price}</p>
-      </div>
-
-      {/* 説明文ボックス */}
-      {data.description && (
-        <div className="mt-6 p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
-          <p className="leading-relaxed text-gray-700 whitespace-pre-line">
-            {data.description}
-          </p>
-        </div>
-      )}
-
-      <a
+    <main className="mx-auto max-w-5xl px-6 pb-24 pt-12">
+      <Link
         href="/menu"
-        className="inline-block mt-12 px-6 py-3 border border-black rounded-lg hover:bg-black hover:text-white transition"
+        className="text-sm font-semibold text-[#1f3b08] underline-offset-4 hover:underline"
       >
-        ← 商品一覧へ戻る
-      </a>
+        ← 一覧に戻る
+      </Link>
+
+      <div className="mt-8 grid gap-10 md:grid-cols-[1.2fr,1fr] md:items-start">
+        <div className="relative overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+          <Image
+            src={getImageUrl(data.image?.url)}
+            alt={data.name}
+            width={1100}
+            height={760}
+            className="h-full w-full object-cover"
+            priority
+          />
+          <div className="absolute left-6 top-6 rounded-full bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#1f3b08] shadow-sm">
+            Light roast specialty
+          </div>
+        </div>
+
+        <div className="space-y-6 rounded-3xl bg-white/90 p-8 shadow-[0_18px_48px_rgba(0,0,0,0.06)]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.22em] text-gray-500">
+              Menu
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold text-[#1c1c1c]">
+              {data.name}
+            </h1>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {data.origin && (
+              <InfoPill label="Origin" value={data.origin} accent />
+            )}
+            {data.roast && (
+              <InfoPill
+                label="Roast"
+                value={
+                  Array.isArray(data.roast)
+                    ? data.roast.join(" / ")
+                    : data.roast
+                }
+              />
+            )}
+            {data.process && (
+              <InfoPill label="Process" value={data.process} />
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-[#e8e8e8] bg-[#f7fbf1] px-5 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-[#3f5c1f]">
+              Stripe Ready
+            </p>
+            <p className="text-3xl font-bold text-[#1f3b08]">
+              {formatPrice(data.price)}
+            </p>
+            <div className="text-sm text-gray-700">
+              100g / 200g のシンプルなバリエーションを選択できます。
+              priceID を加えれば Stripe Checkout へ拡張可能な構造です。
+            </div>
+            <WeightSelector />
+            <button
+              type="button"
+              className="inline-flex w-fit items-center justify-center rounded-full bg-[#a4de02] px-5 py-3 text-sm font-semibold text-[#1f3b08] shadow-[0_12px_36px_rgba(164,222,2,0.45)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_44px_rgba(164,222,2,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1f3b08] focus-visible:ring-offset-2"
+              aria-label="Stripe Checkout is coming soon"
+            >
+              Stripe Checkout (準備中)
+            </button>
+          </div>
+
+          {data.description && (
+            <div className="rounded-2xl border border-[#e8e8e8] bg-white px-6 py-5 text-gray-800 shadow-sm">
+              <p className="whitespace-pre-line leading-relaxed">
+                {data.description}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
+
+const InfoPill = ({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) => {
+  return (
+    <div
+      className={`rounded-full px-4 py-3 text-sm font-semibold ${
+        accent
+          ? "bg-[#0f1c0a] text-white"
+          : "bg-[#f5f5f5] text-[#1c1c1c]"
+      }`}
+    >
+      <span className="text-xs uppercase tracking-[0.18em] text-gray-500">
+        {label}{" "}
+      </span>
+      <span className="text-base font-semibold">{value}</span>
+    </div>
+  );
+};

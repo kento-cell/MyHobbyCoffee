@@ -1,25 +1,26 @@
-import Link from "next/link";
+import { BlogCard } from "../_components/cards";
 import { getBlogs } from "@/lib/microcms";
 
 export default async function BlogPage() {
   const { contents } = await getBlogs();
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold mb-6">Blog</h1>
+    <main className="mx-auto max-w-6xl px-6 pb-24 pt-12">
+      <header className="mb-10 flex flex-col gap-3">
+        <p className="text-xs uppercase tracking-[0.22em] text-gray-500">
+          Blog
+        </p>
+        <h1 className="text-3xl font-semibold text-[#1c1c1c]">コーヒージャーナル</h1>
+        <p className="text-sm text-gray-700">
+          産地や焙煎ノート、ペアリングの小話などを静かなレイアウトでまとめています。
+        </p>
+      </header>
 
-      <div className="space-y-6">
-        {contents.map((blog: any) => (
-          <Link
-            key={blog.id}
-            href={`/blog/${blog.id}`} // ← ★これが必須
-            className="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-          >
-            <h2 className="text-xl font-semibold">{blog.title}</h2>
-            <p className="text-gray-600 mt-2">{blog.date}</p>
-          </Link>
+      <section className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {contents.map((blog) => (
+          <BlogCard key={blog.id} blog={blog} />
         ))}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
