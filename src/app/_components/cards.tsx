@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BlogEntry, MenuItem, getImageUrl } from "@/lib/microcms";
@@ -20,8 +20,43 @@ export const ProductCard = ({
   enableAddToCart,
 }: ProductCardProps) => {
   const [qty, setQty] = useState(1);
+  const [showRaw, setShowRaw] = useState(false);
+  const [rawLoading, setRawLoading] = useState(false);
+  const [rawData, setRawData] = useState<any | null>(null);
+  const [rawError, setRawError] = useState<string | null>(null);
   const addToCart = useCartStore((state) => state.addToCart);
   const { pushToast } = useToast();
+
+  useEffect(() => {
+    if (!showRaw) return;
+    if (!item?.id) return;
+    const controller = new AbortController();
+
+    (async () => {
+      setRawLoading(true);
+      setRawError(null);
+      try {
+        const res = await fetch(`/api/menu/${item.id}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          setRawError(`HTTP ${res.status}`);
+          setRawData(null);
+        } else {
+          const json = await res.json();
+          setRawData(json);
+        }
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
+        setRawError(String(err?.message ?? err));
+        setRawData(null);
+      } finally {
+        setRawLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [showRaw, item?.id]);
 
   const priceLabel =
     typeof item.price === "number"
@@ -128,6 +163,30 @@ export const ProductCard = ({
             </button>
           </div>
         )}
+
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowRaw((s) => !s)}
+            className="text-xs text-gray-600 underline-offset-2 hover:underline"
+          >
+            {showRaw ? "API 情報を隠す" : "API 情報を表示"}
+          </button>
+
+          {showRaw && (
+            <div className="mt-2">
+              {rawLoading ? (
+                <div className="text-xs text-gray-600">読み込み中…</div>
+              ) : rawError ? (
+                <div className="text-xs text-red-600">エラー: {rawError}</div>
+              ) : (
+                <pre className="max-h-48 w-full overflow-auto rounded bg-gray-100 p-3 text-xs text-gray-800">
+                  {JSON.stringify(rawData ?? item, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );

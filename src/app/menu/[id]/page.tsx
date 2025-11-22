@@ -1,51 +1,36 @@
-import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getImageUrl, getMenu } from "@/lib/microcms";
-import { PurchasePanel } from "./purchase-panel";
+import { getMenuAll, getImageUrl } from "@/lib/microcms";
 
-export const revalidate = 120;
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
-const fetchMenu = async (id: string) => {
-  try {
-    return await getMenu(id);
-  } catch {
-    return null;
-  }
+const formatPrice = (price?: number | string) => {
+  if (typeof price === "number") return `¥${price.toLocaleString()}`;
+  const numeric = Number(price);
+  return Number.isFinite(numeric)
+    ? `¥${numeric.toLocaleString()}`
+    : "価格未設定";
 };
-
-export async function generateMetadata({
-  params,
-}: {
-  params: { id: string };
-}): Promise<Metadata> {
-  const data = await fetchMenu(params.id);
-  if (!data) {
-    return { title: "メニューが見つかりません | MyHobbyCoffee" };
-  }
-
-  return {
-    title: `${data.name} | MyHobbyCoffee`,
-    description: data.description || "スペシャルティコーヒー豆の詳細ページ",
-    openGraph: {
-      title: data.name,
-      description: data.description || "",
-      images: [{ url: getImageUrl(data.image?.url) }],
-    },
-  };
-}
 
 export default async function MenuDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const data = await fetchMenu(params.id);
+  const { contents } = await getMenuAll();
+  const item = contents.find((p) => p.id === params.id);
 
-  if (!data) {
+  if (!item) {
     notFound();
   }
+
+  const roastLabel = item.roast
+    ? Array.isArray(item.roast)
+      ? item.roast.join(" / ")
+      : item.roast
+    : "未設定";
 
   return (
     <main className="mx-auto max-w-5xl px-6 pb-24 pt-12">
@@ -56,56 +41,46 @@ export default async function MenuDetailPage({
         一覧に戻る
       </Link>
 
-      <div className="mt-8 grid gap-10 md:grid-cols-[1.2fr,1fr] md:items-start">
+      <div className="mt-8 grid gap-8 md:grid-cols-[1.2fr,1fr] md:items-start">
         <div className="relative overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
           <Image
-            src={getImageUrl(data.image?.url)}
-            alt={data.name}
-            width={1100}
-            height={760}
+            src={getImageUrl(item.image?.url)}
+            alt={item.name}
+            width={1200}
+            height={900}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 720px"
             className="h-full w-full object-cover"
             priority
           />
-          <div className="absolute left-6 top-6 rounded-full bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#1f3b08] shadow-sm">
+          <div className="absolute left-4 top-4 rounded-full bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#1f3b08] shadow-sm md:left-6 md:top-6">
             Light roast specialty
           </div>
         </div>
 
-        <div className="space-y-6 rounded-3xl bg-white/90 p-8 shadow-[0_18px_48px_rgba(0,0,0,0.06)]">
-          <div>
+        <div className="space-y-6 rounded-3xl bg-white/90 p-6 shadow-[0_18px_48px_rgba(0,0,0,0.06)] md:p-8">
+          <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.22em] text-gray-500">
               Menu
             </p>
-            <h1 className="mt-2 text-3xl font-semibold text-[#1c1c1c]">
-              {data.name}
+            <h1 className="text-3xl font-semibold text-[#1c1c1c]">
+              {item.name}
             </h1>
+            <p className="text-lg font-bold text-[#1f3b08]">
+              {formatPrice(item.price)}
+            </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            {data.origin && (
-              <InfoPill label="Origin" value={data.origin} accent />
-            )}
-            {data.roast && (
-              <InfoPill
-                label="Roast"
-                value={
-                  Array.isArray(data.roast)
-                    ? data.roast.join(" / ")
-                    : data.roast
-                }
-              />
-            )}
-            {data.process && (
-              <InfoPill label="Process" value={data.process} />
-            )}
+          <div className="grid gap-3 rounded-2xl border border-[#e8e8e8] bg-[#f7fbf1] p-4 md:grid-cols-2">
+            <InfoRow label="Origin (origin)" value={item.origin || "未設定"} />
+            <InfoRow label="Roast (roast)" value={roastLabel} />
+            <InfoRow label="Process (process)" value={item.process || "未設定"} />
+            <InfoRow label="ID" value={item.id} />
           </div>
 
-          <PurchasePanel item={data} />
-
-          {data.description && (
+          {item.description && (
             <div className="rounded-2xl border border-[#e8e8e8] bg-white px-6 py-5 text-gray-800 shadow-sm">
               <p className="whitespace-pre-line leading-relaxed">
-                {data.description}
+                {item.description}
               </p>
             </div>
           )}
@@ -115,27 +90,17 @@ export default async function MenuDetailPage({
   );
 }
 
-const InfoPill = ({
+const InfoRow = ({
   label,
   value,
-  accent,
 }: {
   label: string;
   value: string;
-  accent?: boolean;
-}) => {
-  return (
-    <div
-      className={`rounded-full px-4 py-3 text-sm font-semibold ${
-        accent
-          ? "bg-[#0f1c0a] text-white"
-          : "bg-[#f5f5f5] text-[#1c1c1c]"
-      }`}
-    >
-      <span className="text-xs uppercase tracking-[0.18em] text-gray-500">
-        {label}{" "}
-      </span>
-      <span className="text-base font-semibold">{value}</span>
-    </div>
-  );
-};
+}) => (
+  <div className="flex flex-col gap-1 rounded-xl bg-white px-4 py-3 shadow-sm">
+    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+      {label}
+    </span>
+    <span className="text-sm font-semibold text-[#1c1c1c]">{value}</span>
+  </div>
+);

@@ -23,6 +23,7 @@ export type BlogEntry = {
   id: string;
   title: string;
   content?: string;
+  body?: string;
   date?: string;
   eyecatch?: ImageField;
   category?: {
@@ -34,37 +35,55 @@ export type BlogEntry = {
 const serviceDomain = process.env.MICROCMS_SERVICE_DOMAIN;
 const apiKey = process.env.MICROCMS_API_KEY;
 
-if (!serviceDomain || !apiKey) {
-  throw new Error("MICROCMS_SERVICE_DOMAIN or MICROCMS_API_KEY is not set");
-}
+const client =
+  serviceDomain && apiKey
+    ? createClient({
+        serviceDomain,
+        apiKey,
+      })
+    : null;
 
-export const client = createClient({
-  serviceDomain,
-  apiKey,
-});
+const getClient = () => {
+  if (!client) {
+    console.warn(
+      "MICROCMS_SERVICE_DOMAIN or MICROCMS_API_KEY is not set. Returning fallback data."
+    );
+    return null;
+  }
+  return client;
+};
 
 export const getBlogs = async () => {
-  return await client.getList<BlogEntry>({
+  const c = getClient();
+  if (!c) {
+    return { contents: [], totalCount: 0, limit: 0, offset: 0 };
+  }
+  return await c.getList<BlogEntry>({
     endpoint: "blogs",
     queries: {
-      fields: "id,title,date,eyecatch,category",
+      limit: 100,
       orders: "-publishedAt",
     },
   });
 };
 
 export const getBlog = async (id: string) => {
-  return await client.get<BlogEntry>({
+  const c = getClient();
+  if (!c) {
+    return null;
+  }
+  return await c.get<BlogEntry>({
     endpoint: "blogs",
     contentId: id,
-    queries: {
-      fields: "id,title,content,date,eyecatch,category",
-    },
   });
 };
 
 export const getMenuAll = async () => {
-  return await client.getList<MenuItem>({
+  const c = getClient();
+  if (!c) {
+    return { contents: [], totalCount: 0, limit: 0, offset: 0 };
+  }
+  return await c.getList<MenuItem>({
     endpoint: "menu",
     queries: {
       limit: 100,
@@ -74,14 +93,22 @@ export const getMenuAll = async () => {
 };
 
 export const getMenu = async (id: string) => {
-  return await client.get<MenuItem>({
+  const c = getClient();
+  if (!c) {
+    return null;
+  }
+  return await c.get<MenuItem>({
     endpoint: "menu",
     contentId: id,
   });
 };
 
 export const getRecommendedMenu = async () => {
-  return await client.getList<MenuItem>({
+  const c = getClient();
+  if (!c) {
+    return { contents: [], totalCount: 0, limit: 0, offset: 0 };
+  }
+  return await c.getList<MenuItem>({
     endpoint: "menu",
     queries: {
       filters: "isRecommended[equals]true",

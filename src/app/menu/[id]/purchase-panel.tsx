@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { MenuItem, getImageUrl } from "@/lib/microcms";
 import { QtySelector } from "../../_components/qty-selector";
-import { WeightSelector } from "../../_components/weight-selector";
 import { useCartStore } from "@/store/cart";
 import { useToast } from "../../_components/toast-provider";
 
@@ -33,7 +32,7 @@ export const PurchasePanel = ({ item }: { item: MenuItem }) => {
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-[#e8e8e8] bg-[#f7fbf1] px-5 py-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs uppercase tracking-[0.2em] text-[#3f5c1f]">
           Stripe Ready
         </p>
@@ -45,10 +44,8 @@ export const PurchasePanel = ({ item }: { item: MenuItem }) => {
         {formatPrice(item.price)}
       </p>
       <div className="text-sm text-gray-700">
-        100g / 200g のシンプルなバリエーションを選択できます。priceID を
-        加えれば Stripe Checkout へ拡張可能な構造です。
+        microCMS の価格をそのまま利用。サイズは後日 API で可変化予定です。
       </div>
-      <WeightSelector />
       <div className="flex flex-wrap items-center gap-3">
         <QtySelector value={qty} onChange={setQty} />
         <button
