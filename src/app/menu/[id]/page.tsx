@@ -2,15 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { WeightSelector } from "../../_components/weight-selector";
 import { getImageUrl, getMenu } from "@/lib/microcms";
+import { PurchasePanel } from "./purchase-panel";
 
 export const revalidate = 120;
-
-const formatPrice = (price?: number) =>
-  typeof price === "number"
-    ? `¥${price.toLocaleString()}`
-    : "価格はお問い合わせください";
 
 const fetchMenu = async (id: string) => {
   try {
@@ -58,7 +53,7 @@ export default async function MenuDetailPage({
         href="/menu"
         className="text-sm font-semibold text-[#1f3b08] underline-offset-4 hover:underline"
       >
-        ← 一覧に戻る
+        一覧に戻る
       </Link>
 
       <div className="mt-8 grid gap-10 md:grid-cols-[1.2fr,1fr] md:items-start">
@@ -105,26 +100,7 @@ export default async function MenuDetailPage({
             )}
           </div>
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-[#e8e8e8] bg-[#f7fbf1] px-5 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#3f5c1f]">
-              Stripe Ready
-            </p>
-            <p className="text-3xl font-bold text-[#1f3b08]">
-              {formatPrice(data.price)}
-            </p>
-            <div className="text-sm text-gray-700">
-              100g / 200g のシンプルなバリエーションを選択できます。
-              priceID を加えれば Stripe Checkout へ拡張可能な構造です。
-            </div>
-            <WeightSelector />
-            <button
-              type="button"
-              className="inline-flex w-fit items-center justify-center rounded-full bg-[#a4de02] px-5 py-3 text-sm font-semibold text-[#1f3b08] shadow-[0_12px_36px_rgba(164,222,2,0.45)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_44px_rgba(164,222,2,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1f3b08] focus-visible:ring-offset-2"
-              aria-label="Stripe Checkout is coming soon"
-            >
-              Stripe Checkout (準備中)
-            </button>
-          </div>
+          <PurchasePanel item={data} />
 
           {data.description && (
             <div className="rounded-2xl border border-[#e8e8e8] bg-white px-6 py-5 text-gray-800 shadow-sm">

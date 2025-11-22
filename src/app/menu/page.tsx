@@ -19,7 +19,12 @@ export default async function MenuPage() {
 
       <section className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
         {contents.map((item) => (
-          <ProductCard key={item.id} item={item} href={`/menu/${item.id}`} />
+          <ProductCard
+            key={item.id}
+            item={item}
+            href={`/menu/${item.id}`}
+            enableAddToCart
+          />
         ))}
       </section>
     </main>
