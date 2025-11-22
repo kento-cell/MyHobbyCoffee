@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
 
@@ -34,3 +34,19 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Dev Container (Docker)
+
+Prerequisites:
+- Docker Desktop (or a Docker-compatible engine)
+- VS Code with Dev Containers extension, or GitHub Codespaces
+
+Getting started:
+1. Copy `.env.example` to `.env.local` and set your real MICROCMS keys.
+2. Open this folder in VS Code and run "Dev Containers: Reopen in Container" (or open as a Codespace).
+3. After the container builds and `npm ci` finishes, run `npm run dev` inside the container terminal. The app is served on http://localhost:3000.
+
+Notes:
+- `node_modules` is stored in a Docker volume to avoid Windows host path issues.
+- Telemetry is disabled in the container via `NEXT_TELEMETRY_DISABLED`.
+

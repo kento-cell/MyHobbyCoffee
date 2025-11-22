@@ -1,0 +1,23 @@
+﻿{
+  "name": "cafe-ec",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js dev server"
+    }
+  },
+  "postCreateCommand": "npm ci",
+  "remoteEnv": {
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}
