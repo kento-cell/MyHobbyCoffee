@@ -14,8 +14,7 @@ export default async function HomePage() {
     getRecommendedMenu(),
     getBlogs(),
   ]);
-  const heroCopy =
-    heroMessages[Math.floor(Math.random() * heroMessages.length)];
+  const heroCopy = heroMessages[0];
   const latestBlogs = blogs.slice(0, 2);
 
   return (

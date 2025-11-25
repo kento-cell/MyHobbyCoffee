@@ -6,10 +6,13 @@ import { QtySelector } from "../../_components/qty-selector";
 import { useCartStore } from "@/store/cart";
 import { useToast } from "../../_components/toast-provider";
 
-const formatPrice = (price?: number) =>
-  typeof price === "number"
-    ? `¥${price.toLocaleString()}`
+const formatPrice = (price?: number | string) => {
+  if (typeof price === "number") return `¥${price.toLocaleString()}`;
+  const numeric = Number(price);
+  return Number.isFinite(numeric)
+    ? `¥${numeric.toLocaleString()}`
     : "価格はお問い合わせください";
+};
 
 export const PurchasePanel = ({ item }: { item: MenuItem }) => {
   const [qty, setQty] = useState(1);
@@ -17,7 +20,10 @@ export const PurchasePanel = ({ item }: { item: MenuItem }) => {
   const { pushToast } = useToast();
 
   const handleAdd = () => {
-    const price = typeof item.price === "number" ? item.price : 0;
+    const price =
+      typeof item.price === "number"
+        ? item.price
+        : Number(item.price) || 0;
     addToCart(
       {
         productId: item.id,
@@ -43,6 +49,14 @@ export const PurchasePanel = ({ item }: { item: MenuItem }) => {
       <p className="text-3xl font-bold text-[#1f3b08]">
         {formatPrice(item.price)}
       </p>
+      {item.amount && (
+        <div className="text-sm font-semibold text-[#1f3b08]">
+          内容量:{" "}
+          {typeof item.amount === "number"
+            ? `${item.amount}g`
+            : item.amount}
+        </div>
+      )}
       <div className="text-sm text-gray-700">
         microCMS の価格をそのまま利用。サイズは後日 API で可変化予定です。
       </div>

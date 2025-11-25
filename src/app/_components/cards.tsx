@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, KeyboardEvent, MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BlogEntry, MenuItem, getImageUrl } from "@/lib/microcms";
 import { QtySelector } from "./qty-selector";
 import { useCartStore } from "@/store/cart";
@@ -19,10 +20,11 @@ export const ProductCard = ({
   href,
   enableAddToCart,
 }: ProductCardProps) => {
+  const router = useRouter();
   const [qty, setQty] = useState(1);
   const [showRaw, setShowRaw] = useState(false);
   const [rawLoading, setRawLoading] = useState(false);
-  const [rawData, setRawData] = useState<any | null>(null);
+  const [rawData, setRawData] = useState<unknown | null>(null);
   const [rawError, setRawError] = useState<string | null>(null);
   const addToCart = useCartStore((state) => state.addToCart);
   const { pushToast } = useToast();
@@ -46,9 +48,10 @@ export const ProductCard = ({
           const json = await res.json();
           setRawData(json);
         }
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
-        setRawError(String(err?.message ?? err));
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        const message = err instanceof Error ? err.message : String(err);
+        setRawError(message);
         setRawData(null);
       } finally {
         setRawLoading(false);
@@ -63,7 +66,22 @@ export const ProductCard = ({
       ? `¥${item.price.toLocaleString()}`
       : "価格はお問い合わせください";
 
-  const handleAdd = () => {
+  const handleNavigate = () => {
+    if (!href) return;
+    router.push(href);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!href) return;
+    if (event.currentTarget !== event.target) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleNavigate();
+    }
+  };
+
+  const handleAdd = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
     if (!enableAddToCart) return;
     const price = typeof item.price === "number" ? item.price : 0;
     addToCart(
@@ -93,11 +111,21 @@ export const ProductCard = ({
   );
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(0,0,0,0.08)]">
+    <article
+      className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(0,0,0,0.08)] ${
+        href ? "cursor-pointer" : ""
+      }`}
+      role={href ? "link" : undefined}
+      tabIndex={href ? 0 : undefined}
+      aria-label={href ? `${item.name} の詳細を見る` : undefined}
+      onClick={href ? handleNavigate : undefined}
+      onKeyDown={href ? handleKeyDown : undefined}
+    >
       {href ? (
         <Link
           href={href}
           className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a4de02] focus-visible:ring-offset-4 focus-visible:ring-offset-white"
+          onClick={(event) => event.stopPropagation()}
         >
           {cover}
         </Link>
@@ -122,6 +150,7 @@ export const ProductCard = ({
             <Link
               href={href}
               className="transition hover:text-[#1f3b08] hover:underline"
+              onClick={(event) => event.stopPropagation()}
             >
               {item.name}
             </Link>
@@ -152,7 +181,11 @@ export const ProductCard = ({
         </div>
 
         {enableAddToCart && (
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div
+            className="mt-3 flex items-center justify-between gap-3"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
             <QtySelector value={qty} onChange={setQty} compact />
             <button
               type="button"
@@ -164,10 +197,17 @@ export const ProductCard = ({
           </div>
         )}
 
-        <div className="mt-3">
+        <div
+          className="mt-3"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
           <button
             type="button"
-            onClick={() => setShowRaw((s) => !s)}
+            onClick={(event) => {
+              event.stopPropagation();
+              setShowRaw((s) => !s);
+            }}
             className="text-xs text-gray-600 underline-offset-2 hover:underline"
           >
             {showRaw ? "API 情報を隠す" : "API 情報を表示"}

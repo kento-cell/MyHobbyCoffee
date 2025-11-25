@@ -14,7 +14,8 @@ export type MenuItem = {
   origin?: string;
   process?: string;
   description?: string;
-  price?: number;
+  price?: number | string;
+  amount?: number | string;
   isRecommended?: boolean;
   weightOptions?: string[];
 };
