@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BlogCard, ProductCard } from "./_components/cards";
+import { HeroCopyRotator } from "./_components/hero-copy-rotator";
 import { getBlogs, getRecommendedMenu } from "@/lib/microcms";
 
 const heroMessages = [
   "焙煎の香りと産地の物語を、静かな余白とともに届けます。",
   "ライムグリーンのアクセントで、朝の一杯を軽やかに。",
-  "軽い焙煎のニュアンスを、映像と写真で丁寧に伝える EC サイト。",
+  "軽めの焙煎ニュアンスを、映像と写真で丁寧に伝える EC サイト。",
 ];
 
 export default async function HomePage() {
@@ -14,7 +15,6 @@ export default async function HomePage() {
     getRecommendedMenu(),
     getBlogs(),
   ]);
-  const heroCopy = heroMessages[0];
   const latestBlogs = blogs.slice(0, 2);
 
   return (
@@ -35,7 +35,7 @@ export default async function HomePage() {
               Light up coffee at home
             </p>
             <h1 className="text-4xl font-semibold leading-tight text-[#1c1c1c] md:text-5xl">
-              {heroCopy}
+              <HeroCopyRotator messages={heroMessages} intervalMs={5200} />
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-gray-700">
               余白を活かしたミニマルな UI で、スペシャルティコーヒー豆の個性をそのままに。
@@ -108,7 +108,7 @@ export default async function HomePage() {
                   <p className="text-xs uppercase tracking-[0.18em] text-white/70">
                     Highlight
                   </p>
-                  <p className="text-lg font-semibold">余白を活かしたミニマル設計</p>
+                  <p className="text-lg font-semibold">余白を活かしたミニマル設計。</p>
                 </div>
                 <span className="rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[#1f3b08]">
                   Lime #A4DE02
@@ -123,11 +123,11 @@ export default async function HomePage() {
         {[
           {
             title: "Minimal &amp; Airy",
-            body: "余白 80px ベースのセクション設計。画像を大きく、テキストは必要最小限に。",
+            body: "余白 80px ベースのセクション設計。画像を大きく、テキストは最小限に。",
           },
           {
             title: "Performance Ready",
-            body: "next/image で最適化。microCMS スキーマは変更せず、そのまま UI をアップデート。",
+            body: "next/image で最適化。microCMS スキーマを変更せず、そのまま UI をアップデート。",
           },
           {
             title: "Stripe Expandable",
@@ -161,7 +161,7 @@ export default async function HomePage() {
               おすすめの豆
             </h2>
             <p className="mt-2 text-sm text-gray-700">
-              isRecommended=true の menu から最新 3 件をピックアップ。
+              isRecommended=true の menu から最新 3 件をピックアップしています。
             </p>
           </div>
           <Link
@@ -175,43 +175,14 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {recommended.length === 0 && (
             <div className="rounded-2xl border border-dashed border-[#d6d6d6] bg-white p-8 text-center text-gray-600">
-              おすすめの豆は準備中です。microCMS の isRecommended を設定すると表示されます。
+              おすすめの豆を準備中です。microCMS の isRecommended を設定すると表示されます。
             </div>
           )}
           {recommended.map((item) => (
             <ProductCard
               key={item.id}
               item={item}
-              href={`/menu/${item.id}`}
             />
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-gray-500">
-              Journal
-            </p>
-            <h2 className="text-3xl font-semibold text-[#1c1c1c]">
-              ブログの最新記事
-            </h2>
-            <p className="mt-2 text-sm text-gray-700">
-              産地の背景や焙煎ノートなど、読みものを最新から 2 件表示します。
-            </p>
-          </div>
-          <Link
-            href="/blog"
-            className="text-sm font-semibold text-[#1f3b08] underline-offset-4 hover:underline"
-          >
-            ブログ一覧へ
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          {latestBlogs.map((blog) => (
-            <BlogCard key={blog.id} blog={blog} />
           ))}
         </div>
       </section>
@@ -224,7 +195,7 @@ export default async function HomePage() {
               About
             </p>
             <h2 className="text-3xl font-semibold text-[#1c1c1c]">
-              ブランドの約束
+              ブランドの想い
             </h2>
             <p className="text-lg leading-relaxed text-gray-800">
               Light Up Coffee のように、写真主導で静的なデザイン。白とライムグリーンで統一し、余白を大切にしています。
@@ -235,7 +206,7 @@ export default async function HomePage() {
                 Noto Sans / Inter
               </span>
               <span className="rounded-full bg-white/80 px-4 py-2 shadow-sm">
-                Section padding ≈ 80px
+                Section padding ≒ 80px
               </span>
               <span className="rounded-full bg-white/80 px-4 py-2 shadow-sm">
                 next/image / SEO meta

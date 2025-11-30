@@ -33,8 +33,23 @@ export type BlogEntry = {
   };
 };
 
+export type TopBackground = {
+  id?: string;
+  Topbk?: ImageField;
+  Topbk2?: ImageField[];
+  topbk?: ImageField;
+  topbk2?: ImageField[];
+};
+
+export type NormalizedTopBackground = {
+  primary?: ImageField;
+  gallery: ImageField[];
+};
+
 const serviceDomain = process.env.MICROCMS_SERVICE_DOMAIN;
 const apiKey = process.env.MICROCMS_API_KEY;
+const topBackgroundEndpoint =
+  process.env.MICROCMS_TOP_BACKGROUND_ENDPOINT || "topbk";
 
 const client =
   serviceDomain && apiKey
@@ -117,6 +132,51 @@ export const getRecommendedMenu = async () => {
       orders: "-publishedAt",
     },
   });
+};
+
+const normalizeTopBackground = (
+  data: TopBackground | null
+): NormalizedTopBackground | null => {
+  if (!data) return null;
+  const primary = data.Topbk ?? data.topbk;
+  const gallery = data.Topbk2 ?? data.topbk2 ?? [];
+  const filtered = gallery.filter(
+    (img): img is ImageField => Boolean(img && img.url)
+  );
+  return {
+    primary: primary?.url ? primary : undefined,
+    gallery: filtered,
+  };
+};
+
+export const getTopBackground = async (): Promise<
+  NormalizedTopBackground | null
+> => {
+  const c = getClient();
+  if (!c) {
+    return null;
+  }
+
+  try {
+    const res = await c.get<TopBackground>({
+      endpoint: topBackgroundEndpoint,
+    });
+    return normalizeTopBackground(res);
+  } catch (error) {
+    try {
+      const list = await c.getList<TopBackground>({
+        endpoint: topBackgroundEndpoint,
+        queries: { limit: 1 },
+      });
+      return normalizeTopBackground(list.contents[0] ?? null);
+    } catch (err) {
+      console.warn(
+        `Failed to fetch top backgrounds from ${topBackgroundEndpoint}`,
+        err
+      );
+      return null;
+    }
+  }
 };
 
 export const getImageUrl = (url?: string) => {

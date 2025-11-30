@@ -13,15 +13,34 @@ type ProductCardProps = {
   item: MenuItem;
   href?: string;
   enableAddToCart?: boolean;
+  soldOut?: boolean;
 };
 
 export const ProductCard = ({
   item,
   href,
   enableAddToCart,
+  soldOut,
 }: ProductCardProps) => {
   const router = useRouter();
   const [qty, setQty] = useState(1);
+  const baseGram =
+    typeof item.amount === "number"
+      ? Math.max(100, Math.round(item.amount / 100) * 100)
+      : 100;
+  const gramOptions = Array.from(
+    { length: Math.max(1, Math.floor((1000 - baseGram) / 100) + 1) },
+    (_, i) => baseGram + i * 100
+  );
+  const [selectedGram, setSelectedGram] = useState<number>(gramOptions[0]);
+  const roastOptions = Array.isArray(item.roast)
+    ? item.roast.filter(Boolean)
+    : item.roast
+      ? [item.roast]
+      : [];
+  const [selectedRoast, setSelectedRoast] = useState<string | undefined>(
+    roastOptions[0]
+  );
   const [showRaw, setShowRaw] = useState(false);
   const [rawLoading, setRawLoading] = useState(false);
   const [rawData, setRawData] = useState<unknown | null>(null);
@@ -67,12 +86,12 @@ export const ProductCard = ({
       : "価格はお問い合わせください";
 
   const handleNavigate = () => {
-    if (!href) return;
+    if (!href || soldOut) return;
     router.push(href);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (!href) return;
+    if (!href || soldOut) return;
     if (event.currentTarget !== event.target) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -82,7 +101,7 @@ export const ProductCard = ({
 
   const handleAdd = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    if (!enableAddToCart) return;
+    if (!enableAddToCart || soldOut) return;
     const price = typeof item.price === "number" ? item.price : 0;
     addToCart(
       {
@@ -90,6 +109,8 @@ export const ProductCard = ({
         title: item.name,
         price,
         image: getImageUrl(item.image?.url),
+        selectedGram,
+        selectedRoast,
       },
       qty
     );
@@ -98,6 +119,11 @@ export const ProductCard = ({
 
   const cover = (
     <div className="relative h-52 w-full overflow-hidden">
+      {soldOut && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 text-sm font-semibold uppercase tracking-[0.2em] text-white">
+          SOLD OUT
+        </div>
+      )}
       <div className="absolute left-0 top-0 h-full w-1 bg-[#a4de02]" />
       <Image
         src={getImageUrl(item.image?.url)}
@@ -113,15 +139,15 @@ export const ProductCard = ({
   return (
     <article
       className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(0,0,0,0.08)] ${
-        href ? "cursor-pointer" : ""
+        href && !soldOut ? "cursor-pointer" : ""
       }`}
-      role={href ? "link" : undefined}
-      tabIndex={href ? 0 : undefined}
+      role={href && !soldOut ? "link" : undefined}
+      tabIndex={href && !soldOut ? 0 : undefined}
       aria-label={href ? `${item.name} の詳細を見る` : undefined}
       onClick={href ? handleNavigate : undefined}
       onKeyDown={href ? handleKeyDown : undefined}
     >
-      {href ? (
+      {href && !soldOut ? (
         <Link
           href={href}
           className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a4de02] focus-visible:ring-offset-4 focus-visible:ring-offset-white"
@@ -146,7 +172,7 @@ export const ProductCard = ({
         </div>
 
         <h3 className="text-xl font-semibold tracking-tight text-[#222222]">
-          {href ? (
+          {href && !soldOut ? (
             <Link
               href={href}
               className="transition hover:text-[#1f3b08] hover:underline"
@@ -173,27 +199,70 @@ export const ProductCard = ({
           <span className="text-lg font-semibold text-[#1f3b08]">
             {priceLabel}
           </span>
-          {href && (
+          {href && !soldOut && (
             <span className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
               View detail
+            </span>
+          )}
+          {soldOut && (
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-red-600">
+              SOLD OUT
             </span>
           )}
         </div>
 
         {enableAddToCart && (
           <div
-            className="mt-3 flex items-center justify-between gap-3"
+            className="mt-3 flex flex-col gap-3"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <QtySelector value={qty} onChange={setQty} compact />
-            <button
-              type="button"
-              onClick={handleAdd}
-              className="inline-flex items-center justify-center rounded-full bg-[#a4de02] px-4 py-2 text-sm font-semibold text-[#0f1c0a] shadow-[0_12px_32px_rgba(164,222,2,0.45)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_40px_rgba(164,222,2,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1f3b08] focus-visible:ring-offset-2"
-            >
-              カートに追加
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <QtySelector value={qty} onChange={setQty} compact />
+              <label className="flex items-center gap-2 text-xs font-semibold text-[#1f3b08]">
+                焙煎度
+                <select
+                  value={selectedRoast || ""}
+                  onChange={(e) => setSelectedRoast(e.target.value)}
+                  className="rounded-lg border border-[#dcdcdc] bg-white px-2 py-1"
+                  disabled={soldOut}
+                >
+                  {roastOptions.length === 0 && (
+                    <option value="">未指定</option>
+                  )}
+                  {roastOptions.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs font-semibold text-[#1f3b08]">
+                グラム
+                <select
+                  value={selectedGram}
+                  onChange={(e) => setSelectedGram(Number(e.target.value))}
+                  className="rounded-lg border border-[#dcdcdc] bg-white px-2 py-1"
+                  disabled={soldOut}
+                >
+                  {gramOptions.map((g) => (
+                    <option key={g} value={g}>
+                      {g}g
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleAdd}
+                disabled={soldOut}
+                className="inline-flex items-center justify-center rounded-full bg-[#a4de02] px-4 py-2 text-sm font-semibold text-[#0f1c0a] shadow-[0_12px_32px_rgba(164,222,2,0.45)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_40px_rgba(164,222,2,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1f3b08] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                カートに追加
+              </button>
+            </div>
           </div>
         )}
 
@@ -210,7 +279,7 @@ export const ProductCard = ({
             }}
             className="text-xs text-gray-600 underline-offset-2 hover:underline"
           >
-            {showRaw ? "API 情報を隠す" : "API 情報を表示"}
+            {showRaw ? "API データを隠す" : "API データを表示"}
           </button>
 
           {showRaw && (

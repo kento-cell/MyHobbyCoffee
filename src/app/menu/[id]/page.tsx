@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { supabaseService } from "@/lib/supabase";
 import { getImageUrl, getMenu, MenuItem } from "@/lib/microcms";
 import { PurchasePanel } from "./purchase-panel";
 
@@ -10,9 +11,22 @@ export const dynamic = "force-dynamic";
 const formatPrice = (price?: number | string) => {
   if (typeof price === "number") return `¥${price.toLocaleString()}`;
   const numeric = Number(price);
-  return Number.isFinite(numeric)
-    ? `¥${numeric.toLocaleString()}`
-    : "価格未設定";
+  return Number.isFinite(numeric) ? `¥${numeric.toLocaleString()}` : "価格未設定";
+};
+
+const normalizeText = (value?: string | string[]) => {
+  if (!value) return "未設定";
+  return Array.isArray(value) ? value.join(" / ") : value;
+};
+
+const fetchStock = async (beanName: string) => {
+  if (!supabaseService) return 0;
+  const { data } = await supabaseService
+    .from("bean_stock")
+    .select("green_stock_gram")
+    .eq("bean_name", beanName)
+    .maybeSingle();
+  return data?.green_stock_gram ?? 0;
 };
 
 export default async function MenuDetailPage({
@@ -21,18 +35,12 @@ export default async function MenuDetailPage({
   params: { id: string };
 }) {
   const item = await getMenu(params.id);
-
   if (!item) {
     notFound();
   }
+  const stock = await fetchStock(item.name);
+  const soldOut = stock <= 0;
 
-  const roastLabel = item.roast
-    ? Array.isArray(item.roast)
-      ? item.roast.join(" / ")
-      : item.roast
-    : "未設定";
-  const originLabel = item.origin || "未設定";
-  const processLabel = item.process || "未設定";
   const amountLabel =
     typeof item.amount === "number"
       ? `${item.amount}g`
@@ -50,17 +58,22 @@ export default async function MenuDetailPage({
       <div className="mt-7 flex flex-col gap-6">
         <div className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-white/70 bg-white shadow-[0_14px_32px_rgba(0,0,0,0.08)]">
           <div className="relative aspect-[4/3] max-h-[360px] w-full">
-          <Image
-            src={getImageUrl(item.image?.url)}
-            alt={item.name}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 720px"
-            className="h-full w-full object-cover"
-            priority
-          />
+            <Image
+              src={getImageUrl(item.image?.url)}
+              alt={item.name}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 720px"
+              className="h-full w-full object-cover"
+              priority
+            />
+            {soldOut && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 text-lg font-semibold uppercase tracking-[0.18em] text-white">
+                SOLD OUT
+              </div>
+            )}
           </div>
           <div className="absolute left-4 top-4 rounded-full bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#1f3b08] shadow-sm md:left-5 md:top-5">
-            Light roast specialty
+            Specialty coffee
           </div>
         </div>
 
@@ -75,14 +88,25 @@ export default async function MenuDetailPage({
             <p className="text-lg font-bold text-[#1f3b08]">
               {formatPrice(item.price)}
             </p>
+            {soldOut && (
+              <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+                SOLD OUT
+              </span>
+            )}
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-[#e8e8e8] bg-[#f7fbf1] p-4 md:grid-cols-2">
-            <InfoRow label="Origin (origin)" value={originLabel} />
-            <InfoRow label="Roast (roast)" value={roastLabel} />
-            <InfoRow label="Process (process)" value={processLabel} />
+            <InfoRow label="Origin" value={item.origin || "未設定"} />
+            <InfoRow label="Roast" value={normalizeText(item.roast)} />
+            <InfoRow label="Process" value={item.process || "未設定"} />
             <InfoRow label="Amount (g)" value={amountLabel} />
             <InfoRow label="ID" value={item.id} />
+            {item.weightOptions && (
+              <InfoRow
+                label="Weight options"
+                value={item.weightOptions.join(", ")}
+              />
+            )}
           </div>
 
           {item.description && (
@@ -93,7 +117,7 @@ export default async function MenuDetailPage({
             </div>
           )}
 
-          <PurchasePanel item={item} />
+          <PurchasePanel item={item} soldOut={soldOut} stockGram={stock} />
 
           <ApiData item={item} />
         </div>
@@ -102,13 +126,7 @@ export default async function MenuDetailPage({
   );
 }
 
-const InfoRow = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) => (
+const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex flex-col gap-1 rounded-xl bg-white px-4 py-3 shadow-sm">
     <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
       {label}

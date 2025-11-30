@@ -6,7 +6,7 @@ export default function AboutPage() {
           About
         </p>
         <h1 className="text-3xl font-semibold text-[#1c1c1c]">
-          MyHobbyCoffee について
+          Aurelbel Roasters について
         </h1>
         <p className="text-sm text-gray-700">
           LightUpCoffee の静かな世界観を参照しつつ、白とライムグリーンで構成したミニマルな EC

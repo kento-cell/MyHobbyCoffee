@@ -20,16 +20,16 @@ const notoSansJp = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "MyHobbyCoffee | Light Up Your Daily Cup",
+  title: "Aurelbel Roastery | Light Up Your Daily Cup",
   description:
     "余白を活かしたミニマルなデザインで、産地の個性が際立つスペシャルティコーヒーを届けます。",
   openGraph: {
-    title: "MyHobbyCoffee | Light Up Your Daily Cup",
+    title: "Aurelbel Roastery | Light Up Your Daily Cup",
     description:
       "産地と焙煎にこだわった一杯を、シンプルで美しいUIからお届けします。",
     url: "https://myhobbycoffee.com",
-    siteName: "MyHobbyCoffee",
-    images: [{ url: "/coffeeFree.svg" }],
+    siteName: "Aurelbel Roastery",
+    images: [{ url: "/Logo.png" }],
   },
 };
 
@@ -46,22 +46,21 @@ export default function RootLayout({
         <Providers>
           <header className="fixed left-0 top-0 z-50 w-full border-b border-white/70 bg-white/80 backdrop-blur-xl">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-              <Link href="/" className="group flex items-center gap-3">
-                <span className="relative inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#c5f37b] to-[#a4de02] shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition duration-300 group-hover:-translate-y-[2px]">
-                  <Image
-                    src="/coffeeFree.svg"
-                    alt="MyHobbyCoffee Logo"
-                    width={28}
-                    height={28}
-                    className="drop-shadow-sm"
-                  />
-                </span>
+              <Link href="/" className="group flex items-center gap-4">
+                <Image
+                  src="/Logo.png"
+                  alt="Aurelbel Roastery Logo"
+                  width={80}
+                  height={80}
+                  className="h-20 w-20 object-contain transition duration-300 group-hover:-translate-y-[2px]"
+                  priority
+                />
                 <div className="flex flex-col leading-tight">
                   <span className="text-[11px] uppercase tracking-[0.32em] text-gray-500">
                     Specialty
                   </span>
                   <span className="text-2xl font-semibold tracking-tight text-[#1c1c1c]">
-                    MyHobbyCoffee
+                    Aurelbel Roastery
                   </span>
                 </div>
               </Link>
@@ -88,13 +87,6 @@ export default function RootLayout({
                 >
                   About
                 </Link>
-                <Link
-                  href="/blog"
-                  className="transition hover:text-[#1f3b08]"
-                  prefetch
-                >
-                  Blog
-                </Link>
                 <CartIcon />
               </nav>
             </div>
@@ -108,13 +100,14 @@ export default function RootLayout({
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <Image
-                    src="/coffeeFree.svg"
-                    alt="MyHobbyCoffee Logo"
-                    width={28}
-                    height={28}
+                    src="/Logo.png"
+                    alt="Aurelbel Roastery Logo"
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 rounded-lg object-contain"
                   />
                   <span className="text-lg font-semibold text-[#1c1c1c]">
-                    MyHobbyCoffee
+                    Aurelbel Roastery
                   </span>
                 </div>
                 <p className="text-sm text-gray-600">
@@ -124,9 +117,6 @@ export default function RootLayout({
               <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-[#1f3b08]">
                 <Link href="/menu" className="hover:underline" prefetch>
                   Menu
-                </Link>
-                <Link href="/blog" className="hover:underline" prefetch>
-                  Blog
                 </Link>
                 <Link href="/about" className="hover:underline" prefetch>
                   About
@@ -150,7 +140,7 @@ export default function RootLayout({
               </div>
             </div>
             <div className="border-t border-[#e6e6e6] bg-white/60 py-4 text-center text-xs text-gray-500">
-              © 2025 MyHobbyCoffee. All rights reserved.
+              © 2025 Aurelbel Roastery. All rights reserved.
             </div>
           </footer>
         </Providers>
