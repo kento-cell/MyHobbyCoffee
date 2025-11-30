@@ -6,11 +6,11 @@ import { supabaseService } from "@/lib/supabase";
 const getStocks = async () => {
   if (!supabaseService) return {};
   const { data } = await supabaseService
-    .from("bean_stock")
-    .select("bean_name, green_stock_gram");
+    .from("bean_stocks")
+    .select("bean_name, stock_grams");
   return (
     data?.reduce<Record<string, number>>((acc, row) => {
-      acc[row.bean_name] = row.green_stock_gram ?? 0;
+      acc[row.bean_name] = row.stock_grams ?? 0;
       return acc;
     }, {}) || {}
   );

@@ -69,13 +69,10 @@ export async function POST(req: Request) {
     }
 
     const { data: beanRow } = await supabaseService
-      .from("beans_inventory")
-      .select("*")
+      .from("bean_stocks")
+      .select("id, bean_name, stock_grams")
       .eq("bean_name", productName)
       .maybeSingle();
-    if (beanRow?.loss_rate) {
-      lossRate = beanRow.loss_rate;
-    }
 
     await supabaseService.from("orders").insert({
       stripe_session_id: session.id,
@@ -91,12 +88,13 @@ export async function POST(req: Request) {
     });
 
     if (beanRow) {
-      const required = Math.ceil(gram * qty * (1 + lossRate));
-      const nextStock = Math.max(0, (beanRow.stock_gram || 0) - required);
+      const required = gram * qty;
+      const currentStock = beanRow.stock_grams ?? 0;
+      const nextStock = Math.max(0, currentStock - required);
       await supabaseService
-        .from("beans_inventory")
+        .from("bean_stocks")
         .update({
-          stock_gram: nextStock,
+          stock_grams: nextStock,
           updated_at: new Date().toISOString(),
         })
         .eq("id", beanRow.id);

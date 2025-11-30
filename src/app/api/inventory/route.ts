@@ -9,13 +9,19 @@ export async function GET() {
   }
 
   const { data, error } = await supabaseService
-    .from("beans_inventory")
-    .select("*")
+    .from("bean_stocks")
+    .select("id, bean_name, stock_grams, updated_at")
     .order("bean_name", { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data });
+  const normalized =
+    data?.map((row) => ({
+      ...row,
+      current_stock_g: row.stock_grams ?? 0,
+    })) ?? [];
+
+  return NextResponse.json({ data: normalized });
 }

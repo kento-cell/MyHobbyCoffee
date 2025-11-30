@@ -20,11 +20,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "beanName and deltaGram are required" }, { status: 400 });
   }
 
-  const lossRate = typeof body.lossRate === "number" ? body.lossRate : undefined;
-
   const { data: existing, error: fetchError } = await supabaseService
-    .from("beans_inventory")
-    .select("*")
+    .from("bean_stocks")
+    .select("id, bean_name, stock_grams")
     .eq("bean_name", body.beanName)
     .limit(1)
     .maybeSingle();
@@ -33,7 +31,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: fetchError.message }, { status: 500 });
   }
 
-  const nextStock = (existing?.stock_gram || 0) + body.deltaGram;
+  const baseStock = existing?.stock_grams ?? 0;
+  const nextStock = baseStock + body.deltaGram;
   if (nextStock < 0) {
     return NextResponse.json({ error: "Stock cannot be negative" }, { status: 400 });
   }
@@ -41,13 +40,12 @@ export async function POST(request: Request) {
   const payload = {
     id: existing?.id ?? body.id,
     bean_name: body.beanName,
-    stock_gram: nextStock,
-    loss_rate: lossRate ?? existing?.loss_rate ?? 0.12,
+    stock_grams: nextStock,
     updated_at: new Date().toISOString(),
   };
 
   const { data, error } = await supabaseService
-    .from("beans_inventory")
+    .from("bean_stocks")
     .upsert(payload)
     .select()
     .single();

@@ -47,8 +47,8 @@ export async function POST(request: Request) {
   const unitAmount = Math.max(0, Math.round((price / baseAmount) * gram));
 
   const { data: beanRow, error: invError } = await supabaseService
-    .from("beans_inventory")
-    .select("*")
+    .from("bean_stocks")
+    .select("id, bean_name, stock_grams")
     .eq("bean_name", product.name)
     .limit(1)
     .maybeSingle();
@@ -61,13 +61,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Inventory not found for this bean" }, { status: 400 });
   }
 
-  const lossRate = beanRow.loss_rate ?? 0.12;
-  const requiredGram = Math.ceil(gram * qty * (1 + lossRate));
+  const stock = beanRow.stock_grams ?? 0;
+  const requiredGram = gram * qty;
 
-  if (beanRow.stock_gram < requiredGram) {
+  if (stock < requiredGram) {
     return NextResponse.json(
       {
-        error: `在庫不足です。必要量: ${requiredGram}g / 在庫: ${beanRow.stock_gram}g`,
+        error: `在庫不足です。必要量: ${requiredGram}g / 在庫: ${stock}g`,
       },
       { status: 400 }
     );
