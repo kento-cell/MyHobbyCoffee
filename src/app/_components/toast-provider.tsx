@@ -6,7 +6,6 @@ import {
   useContext,
   useMemo,
   useState,
-  useEffect,
 } from "react";
 import { createPortal } from "react-dom";
 
@@ -27,11 +26,7 @@ export const ToastProvider = ({
   children: React.ReactNode;
 }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = typeof window !== "undefined";
 
   const pushToast = useCallback((message: string) => {
     const id = Date.now();

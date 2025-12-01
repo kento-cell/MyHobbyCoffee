@@ -48,10 +48,12 @@ export default function InventoryPage() {
     setMenuItems(json.data ?? []);
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchStocks();
     fetchMenu();
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateStock = async (beanName: string, deltaGram: number) => {
     setState({ status: "loading" });

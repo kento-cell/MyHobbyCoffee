@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BlogCard, ProductCard } from "./_components/cards";
+import { ProductCard } from "./_components/cards";
 import { HeroCopyRotator } from "./_components/hero-copy-rotator";
-import { getBlogs, getRecommendedMenu } from "@/lib/microcms";
+import { getRecommendedMenu } from "@/lib/microcms";
 
 const heroMessages = [
   "焙煎の香りと産地の物語を、静かな余白とともに届けます。",
@@ -11,11 +11,7 @@ const heroMessages = [
 ];
 
 export default async function HomePage() {
-  const [{ contents: recommended }, { contents: blogs }] = await Promise.all([
-    getRecommendedMenu(),
-    getBlogs(),
-  ]);
-  const latestBlogs = blogs.slice(0, 2);
+  const { contents: recommended } = await getRecommendedMenu();
 
   return (
     <main className="pb-24">

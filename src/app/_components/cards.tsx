@@ -22,22 +22,40 @@ export const ProductCard = ({
   enableAddToCart,
   soldOut,
 }: ProductCardProps) => {
+  const sortRoastOptions = (options: string[]) =>
+    [...options].sort((a, b) => {
+      const rank = (v: string) =>
+        v.includes("浅") ? 0 : v.includes("中") ? 1 : v.includes("深") ? 2 : 3;
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return a.localeCompare(b, "ja");
+    });
+
   const router = useRouter();
   const [qty, setQty] = useState(1);
-  const baseGram =
-    typeof item.amount === "number"
-      ? Math.max(100, Math.round(item.amount / 100) * 100)
-      : 100;
+  const normalizedAmount =
+    typeof item.amount === "number" && Number.isFinite(item.amount)
+      ? item.amount
+      : Number.isFinite(Number(item.amount))
+        ? Number(item.amount)
+        : 100;
+  const baseGram = Math.max(
+    100,
+    Math.round(normalizedAmount / 100) * 100
+  );
   const gramOptions = Array.from(
     { length: Math.max(1, Math.floor((1000 - baseGram) / 100) + 1) },
     (_, i) => baseGram + i * 100
   );
   const [selectedGram, setSelectedGram] = useState<number>(gramOptions[0]);
-  const roastOptions = Array.isArray(item.roast)
-    ? item.roast.filter(Boolean)
-    : item.roast
-      ? [item.roast]
-      : [];
+  const roastOptions = sortRoastOptions(
+    Array.isArray(item.roast)
+      ? item.roast.filter(Boolean)
+      : item.roast
+        ? [item.roast]
+        : []
+  );
   const [selectedRoast, setSelectedRoast] = useState<string | undefined>(
     roastOptions[0]
   );
@@ -80,10 +98,16 @@ export const ProductCard = ({
     return () => controller.abort();
   }, [showRaw, item?.id]);
 
+  const basePrice =
+    typeof item.price === "number" ? item.price : Number(item.price) || 0;
   const priceLabel =
-    typeof item.price === "number"
-      ? `¥${item.price.toLocaleString()}`
+    basePrice > 0
+      ? `¥${basePrice.toLocaleString()} / ${baseGram}g`
       : "価格はお問い合わせください";
+  const selectedPrice =
+    basePrice > 0
+      ? Math.round((basePrice * Math.max(baseGram, selectedGram)) / baseGram)
+      : 0;
 
   const handleNavigate = () => {
     if (!href || soldOut) return;
@@ -102,7 +126,7 @@ export const ProductCard = ({
   const handleAdd = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
     if (!enableAddToCart || soldOut) return;
-    const price = typeof item.price === "number" ? item.price : 0;
+    const price = basePrice;
     addToCart(
       {
         productId: item.id,
@@ -111,10 +135,13 @@ export const ProductCard = ({
         image: getImageUrl(item.image?.url),
         selectedGram,
         selectedRoast,
+        baseGram,
       },
       qty
     );
-    pushToast(`${item.name} を ${qty} 点カートに追加しました`);
+    pushToast(
+      `${item.name} を ${selectedGram}g × ${qty} 点カートに追加しました`
+    );
   };
 
   const cover = (
@@ -252,6 +279,12 @@ export const ProductCard = ({
                   ))}
                 </select>
               </label>
+            </div>
+            <div className="text-xs font-semibold text-[#1f3b08]">
+              選択グラム価格:{" "}
+              {basePrice > 0
+                ? `¥${selectedPrice.toLocaleString()}`
+                : "価格はお問い合わせください"}
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <button

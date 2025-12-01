@@ -162,7 +162,7 @@ export const getTopBackground = async (): Promise<
       endpoint: topBackgroundEndpoint,
     });
     return normalizeTopBackground(res);
-  } catch (error) {
+  } catch {
     try {
       const list = await c.getList<TopBackground>({
         endpoint: topBackgroundEndpoint,

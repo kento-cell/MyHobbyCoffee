@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { QtySelector } from "../_components/qty-selector";
-import { useCartStore } from "@/store/cart";
+import { useCartStore, calculateUnitPrice } from "@/store/cart";
 
 const formatPrice = (price: number) => `¥${price.toLocaleString()}`;
 
@@ -47,56 +47,74 @@ export default function CartPage() {
       ) : (
         <div className="grid gap-8 lg:grid-cols-[1.7fr,1fr]">
           <div className="space-y-4">
-            {items.map((item) => (
-              <div
-                key={item.productId}
-                className="flex flex-col gap-4 rounded-3xl border border-[#e8e8e8] bg-white p-5 shadow-[0_12px_32px_rgba(0,0,0,0.05)] md:flex-row md:items-center"
-              >
-                <div className="relative h-28 w-full overflow-hidden rounded-2xl bg-[#f5f5f5] md:h-28 md:w-28">
-                  {item.image ? (
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      sizes="112px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
-                      No image
-                    </div>
-                  )}
-                </div>
+            {items.map((item) => {
+              const unitPrice = calculateUnitPrice(item);
+              const lineTotal = unitPrice * item.qty;
+              return (
+                <div
+                  key={item.lineId}
+                  className="flex flex-col gap-4 rounded-3xl border border-[#e8e8e8] bg-white p-5 shadow-[0_12px_32px_rgba(0,0,0,0.05)] md:flex-row md:items-center"
+                >
+                  <div className="relative h-28 w-full overflow-hidden rounded-2xl bg-[#f5f5f5] md:h-28 md:w-28">
+                    {item.image ? (
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        sizes="112px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
+                        No image
+                      </div>
+                    )}
+                  </div>
 
-                <div className="flex flex-1 flex-col gap-2">
-                  <Link
-                    href={`/menu/${item.productId}`}
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Link
+                      href={`/menu/${item.productId}`}
                     className="text-lg font-semibold text-[#1c1c1c] hover:text-[#1f3b08]"
                   >
                     {item.title}
                   </Link>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                    <span className="rounded-full bg-[#f2f7e8] px-3 py-1 text-[#1f3b08]">
+                      {item.selectedGram}g
+                    </span>
+                    {item.selectedRoast && (
+                      <span className="rounded-full bg-[#eef2f7] px-3 py-1 text-[#1f2b3b]">
+                        {item.selectedRoast}
+                      </span>
+                    )}
+                    <span className="text-gray-600">数量: {item.qty} 点</span>
+                  </div>
                   <div className="text-sm text-gray-600">
-                    {formatPrice(item.price)} / bag
+                    単価 {formatPrice(unitPrice)} / {item.selectedGram}g
+                    <span className="ml-2 text-xs text-gray-500">
+                      基準 {item.baseGram}g 価格 {formatPrice(item.price)}
+                    </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
-                    <QtySelector
-                      value={item.qty}
-                      onChange={(qty) => updateQty(item.productId, qty)}
-                    />
-                    <span className="text-sm font-semibold text-[#1f3b08]">
-                      小計 {formatPrice(item.price * item.qty)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeFromCart(item.productId)}
-                      className="text-sm font-semibold text-[#c2410c] underline-offset-4 hover:underline"
-                    >
-                      削除
-                    </button>
+                      <QtySelector
+                        value={item.qty}
+                        onChange={(qty) => updateQty(item.lineId, qty)}
+                      />
+                      <span className="text-sm font-semibold text-[#1f3b08]">
+                        小計 {formatPrice(lineTotal)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(item.lineId)}
+                        className="text-sm font-semibold text-[#c2410c] underline-offset-4 hover:underline"
+                      >
+                        削除
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <aside className="space-y-4 rounded-3xl border border-[#e8e8e8] bg-white p-6 shadow-[0_14px_40px_rgba(0,0,0,0.06)]">

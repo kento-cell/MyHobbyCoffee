@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { supabaseService } from "@/lib/supabase";
 import { sendOrderNotification } from "@/lib/gmail";
+import type Stripe from "stripe";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
   const rawBody = await req.text();
 
-  let event;
+  let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   }
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as any;
+    const session = event.data.object as Stripe.Checkout.Session;
 
     const metadata = session.metadata || {};
     const productId = metadata.productId;
@@ -51,8 +52,6 @@ export async function POST(req: Request) {
     let tasteStart: Date | null = null;
     let tasteEnd: Date | null = null;
     let expiryDate: Date | null = null;
-    let lossRate = 0.12;
-
     if (roastId) {
       const { data: roastRow } = await supabaseService
         .from("roast_profiles")

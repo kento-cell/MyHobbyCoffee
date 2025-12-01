@@ -27,43 +27,62 @@ type Props = {
 };
 
 export const PurchasePanel = ({ item, soldOut, stockGram = 0 }: Props) => {
+  const sortRoastOptions = (options: string[]) =>
+    [...options].sort((a, b) => {
+      const rank = (v: string) =>
+        v.includes("浅") ? 0 : v.includes("中") ? 1 : v.includes("深") ? 2 : 3;
+      const ra = rank(a);
+      const rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return a.localeCompare(b, "ja");
+    });
+
+  const basePrice =
+    typeof item.price === "number" ? item.price : Number(item.price) || 0;
+  const baseGram = Math.max(
+    100,
+    Math.round(normalizeAmount(item.amount) / 100) * 100
+  );
   const [qty, setQty] = useState(1);
-  const [gram, setGram] = useState<number>(() => {
-    const base = normalizeAmount(item.amount);
-    return Math.max(100, Math.round(base / 100) * 100);
-  });
-  const roastOptions = Array.isArray(item.roast)
-    ? item.roast.filter(Boolean)
-    : item.roast
-      ? [item.roast]
-      : [];
+  const [gram, setGram] = useState<number>(baseGram);
+  const roastOptions = sortRoastOptions(
+    Array.isArray(item.roast)
+      ? item.roast.filter(Boolean)
+      : item.roast
+        ? [item.roast]
+        : []
+  );
   const [roast, setRoast] = useState<string | undefined>(
     roastOptions[0] ?? (Array.isArray(item.roast) ? item.roast[0] : item.roast)
   );
   const addToCart = useCartStore((state) => state.addToCart);
   const { pushToast } = useToast();
 
+  const priceForSelectedGram = Math.round(
+    (basePrice * Math.max(baseGram, gram)) / Math.max(1, baseGram)
+  );
+
   const handleAdd = () => {
     if (soldOut) return;
-    const price =
-      typeof item.price === "number" ? item.price : Number(item.price) || 0;
     addToCart(
       {
         productId: item.id,
         title: item.name,
-        price,
+        price: basePrice,
         image: getImageUrl(item.image?.url),
         selectedGram: gram,
         selectedRoast: roast,
+        baseGram,
       },
       qty
     );
-    pushToast(`${item.name} を ${qty} 点カートに追加しました`);
+    pushToast(
+      `${item.name} を ${gram}g × ${qty} 点カートに追加しました`
+    );
   };
 
-  const minAllowed = normalizeAmount(item.amount);
   const maxBuyableGram = Math.max(
-    0,
+    baseGram,
     Math.min(1000, stockGram > 0 ? stockGram : 1000)
   );
 
@@ -77,7 +96,15 @@ export const PurchasePanel = ({ item, soldOut, stockGram = 0 }: Props) => {
           UI Only
         </span>
       </div>
-      <p className="text-3xl font-bold text-[#1f3b08]">{formatPrice(item.price)}</p>
+      <p className="text-3xl font-bold text-[#1f3b08]">
+        {formatPrice(priceForSelectedGram)}
+        <span className="ml-2 text-base font-semibold text-[#3f5c1f]">
+          / {gram}g
+        </span>
+      </p>
+      <div className="text-sm text-gray-700">
+        基準価格 {formatPrice(basePrice)} / {baseGram}g
+      </div>
       {item.amount && (
         <div className="text-sm font-semibold text-[#1f3b08]">
           最小量 {typeof item.amount === "number" ? `${item.amount}g` : item.amount}
@@ -89,14 +116,14 @@ export const PurchasePanel = ({ item, soldOut, stockGram = 0 }: Props) => {
         </div>
       )}
       <div className="text-sm text-gray-700">
-        microCMS の価格をそのまま利用。サイズは後日 API で可変化予定です。
+        microCMS の基準価格をもとに、選択したグラムへ自動換算しています。
       </div>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2 font-semibold text-[#1f3b08]">
           グラム
           <input
             type="number"
-            min={100}
+            min={baseGram}
             max={maxBuyableGram || 1000}
             step={100}
             value={gram}
@@ -104,8 +131,8 @@ export const PurchasePanel = ({ item, soldOut, stockGram = 0 }: Props) => {
               const next = Math.round(Number(e.target.value) / 100) * 100;
               setGram(
                 Math.max(
-                  minAllowed,
-                  Math.min(maxBuyableGram || 1000, next || minAllowed)
+                  baseGram,
+                  Math.min(maxBuyableGram || 1000, next || baseGram)
                 )
               );
             }}

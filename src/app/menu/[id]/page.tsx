@@ -40,6 +40,13 @@ export default async function MenuDetailPage({
   }
   const stock = await fetchStock(item.name);
   const soldOut = stock <= 0;
+  const normalizedAmount =
+    typeof item.amount === "number" && Number.isFinite(item.amount)
+      ? item.amount
+      : Number.isFinite(Number(item.amount))
+        ? Number(item.amount)
+        : 100;
+  const baseGram = Math.max(100, Math.round(normalizedAmount / 100) * 100);
 
   const amountLabel =
     typeof item.amount === "number"
@@ -86,7 +93,7 @@ export default async function MenuDetailPage({
               {item.name}
             </h1>
             <p className="text-lg font-bold text-[#1f3b08]">
-              {formatPrice(item.price)}
+              {formatPrice(item.price)} / {baseGram}g
             </p>
             {soldOut && (
               <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
