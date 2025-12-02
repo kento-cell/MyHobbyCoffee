@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -26,7 +27,11 @@ export const ToastProvider = ({
   children: React.ReactNode;
 }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const mounted = typeof window !== "undefined";
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const pushToast = useCallback((message: string) => {
     const id = Date.now();

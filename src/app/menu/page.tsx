@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ProductCard } from "../_components/cards";
 import { getMenuAll, getTopBackground } from "@/lib/microcms";
 import { supabaseService } from "@/lib/supabase";
@@ -99,6 +100,32 @@ export default async function MenuPage() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="mx-auto -mt-6 max-w-6xl px-6">
+        <div className="flex flex-col gap-4 rounded-2xl border border-[#e7f2cd] bg-gradient-to-r from-[#f7fbf1] via-white to-[#eef6e0] px-6 py-6 shadow-[0_14px_40px_rgba(0,0,0,0.05)] md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-600">AI Coffee Match</p>
+            <h3 className="text-xl font-semibold text-[#1c1c1c]">あなたのための豆を選びます</h3>
+            <p className="text-sm text-gray-700">
+              8つの質問に答えるだけで、AI が今の気分に合う豆を診断します。時間は1分ほど。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/recommender/questions"
+              className="rounded-full bg-[#a4de02] px-5 py-3 text-sm font-semibold text-[#0f1c0a] shadow-[0_12px_34px_rgba(164,222,2,0.45)] transition hover:-translate-y-[1px]"
+            >
+              AI診断スタート
+            </Link>
+            <Link
+              href="/recommender/start"
+              className="text-sm font-semibold text-[#1f3b08] underline-offset-4 hover:underline"
+            >
+              機能の詳細を見る
+            </Link>
+          </div>
         </div>
       </section>
 

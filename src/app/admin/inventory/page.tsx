@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type StockRow = {
   bean_name: string;
@@ -20,6 +21,7 @@ type ApiState =
   | { status: "success"; message: string };
 
 export default function InventoryPage() {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [rows, setRows] = useState<StockRow[]>([]);
   const [menuItems, setMenuItems] = useState<MenuRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,25 +29,51 @@ export default function InventoryPage() {
   const [newBean, setNewBean] = useState("");
   const [newGram, setNewGram] = useState(0);
 
+  const getAuthHeaders = async () => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      throw new Error("認証情報がありません");
+    }
+    return { Authorization: `Bearer ${token}` };
+  };
+
   const fetchStocks = async () => {
     setLoading(true);
     setState({ status: "idle" });
-    const res = await fetch("/api/inventory");
-    if (!res.ok) {
-      setState({ status: "error", message: `HTTP ${res.status}` });
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/inventory", { headers });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setState({
+          status: "error",
+          message: json?.error || `HTTP ${res.status}`,
+        });
+        return;
+      }
+      const json = await res.json();
+      setRows(json.data ?? []);
+    } catch (err) {
+      setState({
+        status: "error",
+        message: err instanceof Error ? err.message : "認証エラーが発生しました",
+      });
+    } finally {
       setLoading(false);
-      return;
     }
-    const json = await res.json();
-    setRows(json.data ?? []);
-    setLoading(false);
   };
 
   const fetchMenu = async () => {
-    const res = await fetch("/api/admin/menu");
-    if (!res.ok) return;
-    const json = await res.json();
-    setMenuItems(json.data ?? []);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/admin/menu", { headers });
+      if (!res.ok) return;
+      const json = await res.json();
+      setMenuItems(json.data ?? []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -57,21 +85,29 @@ export default function InventoryPage() {
 
   const updateStock = async (beanName: string, deltaGram: number) => {
     setState({ status: "loading" });
-    const res = await fetch("/api/inventory/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beanName, deltaGram }),
-    });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/inventory/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ beanName, deltaGram }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setState({
+          status: "error",
+          message: json?.error || `HTTP ${res.status}`,
+        });
+        return;
+      }
+      setState({ status: "success", message: "在庫を更新しました" });
+      fetchStocks();
+    } catch (err) {
       setState({
         status: "error",
-        message: json?.error || `HTTP ${res.status}`,
+        message: err instanceof Error ? err.message : "認証エラーが発生しました",
       });
-      return;
     }
-    setState({ status: "success", message: "在庫を更新しました" });
-    fetchStocks();
   };
 
   const handleNew = async () => {

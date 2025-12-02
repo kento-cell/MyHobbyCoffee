@@ -31,6 +31,11 @@ export const metadata: Metadata = {
     siteName: "Aurelbel Roastery",
     images: [{ url: "/Logo.png" }],
   },
+  icons: {
+    icon: ["/favicon.ico", { url: "/icon.png", sizes: "512x512", type: "image/png" }],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -45,27 +50,27 @@ export default function RootLayout({
       >
         <Providers>
           <header className="fixed left-0 top-0 z-50 w-full border-b border-white/70 bg-white/80 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-              <Link href="/" className="group flex items-center gap-4">
+            <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+              <Link href="/" className="group flex items-center gap-3 sm:gap-4">
                 <Image
                   src="/Logo.png"
                   alt="Aurelbel Roastery Logo"
-                  width={80}
-                  height={80}
-                  className="h-20 w-20 object-contain transition duration-300 group-hover:-translate-y-[2px]"
+                  width={96}
+                  height={96}
+                  className="h-16 w-16 object-contain transition duration-300 group-hover:-translate-y-[2px] sm:h-20 sm:w-20 md:h-24 md:w-24"
                   priority
                 />
                 <div className="flex flex-col leading-tight">
                   <span className="text-[11px] uppercase tracking-[0.32em] text-gray-500">
                     Specialty
                   </span>
-                  <span className="text-2xl font-semibold tracking-tight text-[#1c1c1c]">
+                  <span className="text-xl font-semibold tracking-tight text-[#1c1c1c] sm:text-2xl">
                     Aurelbel Roastery
                   </span>
                 </div>
               </Link>
 
-              <nav className="flex items-center gap-6 text-sm font-medium">
+              <nav className="flex w-full flex-wrap items-center gap-3 text-sm font-medium sm:w-auto sm:justify-end sm:gap-5">
                 <Link
                   href="/"
                   className="transition hover:text-[#1f3b08]"
@@ -87,6 +92,13 @@ export default function RootLayout({
                 >
                   About
                 </Link>
+                <Link
+                  href="/recommender/start"
+                  className="transition hover:text-[#1f3b08]"
+                  prefetch
+                >
+                  AI診断
+                </Link>
                 <CartIcon />
               </nav>
             </div>
@@ -102,9 +114,9 @@ export default function RootLayout({
                   <Image
                     src="/Logo.png"
                     alt="Aurelbel Roastery Logo"
-                    width={48}
-                    height={48}
-                    className="h-12 w-12 rounded-lg object-contain"
+                    width={64}
+                    height={64}
+                    className="h-14 w-14 rounded-lg object-contain md:h-16 md:w-16"
                   />
                   <span className="text-lg font-semibold text-[#1c1c1c]">
                     Aurelbel Roastery
@@ -128,14 +140,6 @@ export default function RootLayout({
                   rel="noreferrer"
                 >
                   Instagram
-                </a>
-                <a
-                  href="https://www.youtube.com"
-                  className="hover:underline"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  YouTube
                 </a>
               </div>
             </div>

@@ -50,6 +50,12 @@ export default async function HomePage() {
               >
                 コンセプトを見る
               </Link>
+              <Link
+                href="/recommender/start"
+                className="rounded-full bg-[#0f1c0a] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_48px_rgba(15,28,10,0.35)] transition hover:-translate-y-[1px] hover:shadow-[0_20px_60px_rgba(15,28,10,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a4de02] focus-visible:ring-offset-2"
+              >
+                あなたのための豆を選ぶ
+              </Link>
             </div>
             <div className="flex flex-wrap gap-3 text-sm text-gray-600">
               <span className="rounded-full bg-white/80 px-4 py-2 shadow-sm">

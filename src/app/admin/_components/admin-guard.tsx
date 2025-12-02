@@ -14,8 +14,11 @@ export const AdminGuard = ({ children }: { children: React.ReactNode }) => {
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (!mounted) return;
+      const role = data.session?.user?.app_metadata?.role;
       if (!data.session) {
         router.replace("/login");
+      } else if (role !== "admin") {
+        router.replace("/");
       } else {
         setChecking(false);
       }
