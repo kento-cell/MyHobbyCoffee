@@ -1,10 +1,12 @@
 'use client';
 
 import Link from "next/link";
+import { useState } from "react";
 import { useCartStore } from "@/store/cart";
 
 export const CartIcon = () => {
   const totalQty = useCartStore((state) => state.totalQuantity());
+  const [mounted] = useState(() => typeof document !== "undefined");
 
   return (
     <Link
@@ -24,7 +26,7 @@ export const CartIcon = () => {
         <circle cx="9" cy="18.2" r="1" />
         <circle cx="15" cy="18.2" r="1" />
       </svg>
-      {totalQty > 0 && (
+      {mounted && totalQty > 0 && (
         <span className="absolute -right-1 -top-1 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#a4de02] px-2 text-xs font-bold text-[#0f1c0a] shadow-[0_10px_22px_rgba(164,222,2,0.55)]">
           {totalQty}
         </span>

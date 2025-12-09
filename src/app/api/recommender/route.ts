@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase";
-import { getMenuAll } from "@/lib/microcms";
+import { getMenuAll, type MenuItem } from "@/lib/microcms";
 import {
   DEVICE_COOKIE_NAME,
   RecoAnswers,
@@ -33,7 +33,9 @@ const ensureDeviceId = (request: Request, bodyDeviceId?: string | null) => {
   return `dev-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-// Fallback 18 beans (6 origins x 3 roast levels)
+const numOrNull = (value: unknown) => (typeof value === "number" ? value : null);
+const stringOrNull = (value: unknown) => (typeof value === "string" ? value : null);
+
 const fallbackBeans: BeanRow[] = [
   { id: "fallback-brazil-light", name: "Brazil Santos Light", roast: "Light", acidity: 3, bitterness: 1, notes: "nutty, milk chocolate" },
   { id: "fallback-brazil-medium", name: "Brazil Santos Medium", roast: "Medium", acidity: 2, bitterness: 2, notes: "nutty, cocoa" },
@@ -55,23 +57,31 @@ const fallbackBeans: BeanRow[] = [
   { id: "fallback-sumatra-dark", name: "Sumatra Mandheling Dark", roast: "Dark", acidity: 1, bitterness: 4, notes: "earthy, dark cocoa" },
 ];
 
+const normalizeMenuItem = (item: MenuItem): BeanRow => {
+  const rawAcidity = (item as Record<string, unknown>).acidity;
+  const rawBitterness = (item as Record<string, unknown>).bitterness;
+  const rawDescription = (item as Record<string, unknown>).description;
+
+  return {
+    id: item.id,
+    name: item.name,
+    roast: (Array.isArray(item.roast) ? item.roast[0] : item.roast) ?? null,
+    acidity: numOrNull(rawAcidity),
+    bitterness: numOrNull(rawBitterness),
+    notes:
+      stringOrNull(rawDescription) ??
+      (Array.isArray(item.weightOptions) ? item.weightOptions.join(", ") : undefined) ??
+      item.description,
+  };
+};
+
 const fetchBeans = async (): Promise<{ beans: BeanRow[]; fallback: boolean }> => {
   let menuBeans: BeanRow[] = [];
   let fetchFailed = false;
 
   try {
     const { contents } = await getMenuAll();
-    menuBeans =
-      contents?.map((item) => ({
-        id: item.id,
-        name: item.name,
-        roast: (Array.isArray(item.roast) ? item.roast[0] : item.roast) ?? null,
-        acidity: typeof (item as any).acidity === "number" ? (item as any).acidity : null,
-        bitterness: typeof (item as any).bitterness === "number" ? (item as any).bitterness : null,
-        notes:
-          (item as any).description ??
-          (Array.isArray(item.weightOptions) ? item.weightOptions.join(", ") : undefined),
-      })) ?? [];
+    menuBeans = contents?.map(normalizeMenuItem) ?? [];
   } catch {
     fetchFailed = true;
   }
@@ -106,21 +116,29 @@ const roastLevel = (roast?: string | null) => {
   return 2;
 };
 
+const includesAny = (value: string | undefined, keywords: string[]) => {
+  const lower = value?.toLowerCase() || "";
+  return keywords.some((k) => lower.includes(k.toLowerCase()));
+};
+
 const mapAnswerProfile = (answers: RecoAnswers) => {
-  const acidityPref =
-    answers.q2_acidity === "好き" ? 4 : answers.q2_acidity === "苦手" ? 1 : 2.5;
-  const bitternessPref =
-    answers.q3_bitterness === "深め・ビターが好き"
-      ? 4
-      : answers.q3_bitterness === "軽めが好き"
-        ? 1.5
-        : 2.5;
+  const acidityPref = includesAny(answers.q2_acidity, ["高", "strong", "酸", "bright"])
+    ? 4
+    : includesAny(answers.q2_acidity, ["低", "まろ", "low"])
+      ? 1
+      : 2.5;
+
+  const bitternessPref = includesAny(answers.q3_bitterness, ["強", "ビター", "deep"])
+    ? 3.5
+    : includesAny(answers.q3_bitterness, ["弱", "まろ", "light"])
+      ? 1.5
+      : 2.5;
 
   let roastPref = 2;
-  if (answers.q3_bitterness === "深め・ビターが好き") roastPref = 3;
-  if (answers.q2_acidity === "好き" && answers.q3_bitterness === "軽めが好き") roastPref = 1;
-  if (answers.q4_timing === "朝") roastPref = Math.max(1, roastPref - 0.3);
-  if (answers.q4_timing === "夜") roastPref = Math.min(3, roastPref + 0.3);
+  if (includesAny(answers.q3_bitterness, ["強", "ビター", "deep"])) roastPref = 3;
+  if (includesAny(answers.q2_acidity, ["浅", "爽", "light"])) roastPref = Math.max(1, roastPref - 0.3);
+  if (includesAny(answers.q4_timing, ["朝", "morning"])) roastPref = Math.max(1, roastPref - 0.2);
+  if (includesAny(answers.q4_timing, ["夜", "evening"])) roastPref = Math.min(3, roastPref + 0.2);
 
   return { acidityPref, bitternessPref, roastPref };
 };
@@ -142,16 +160,19 @@ const scoreBean = (
 
 const buildReason = (answers: RecoAnswers) => {
   const parts: string[] = [];
-  if (answers.q3_bitterness === "深め・ビターが好き") {
-    parts.push("ビター好き");
-  } else if (answers.q3_bitterness === "軽めが好き") {
-    parts.push("軽め志向");
+  if (answers.q3_bitterness) {
+    parts.push(`苦味の好み: ${answers.q3_bitterness}`);
   }
-  if (answers.q2_acidity === "好き") parts.push("酸味を好む");
-  if (answers.q2_acidity === "苦手") parts.push("酸味控えめ");
-  if (answers.q4_timing) parts.push(`${answers.q4_timing}に飲むことが多い`);
-  if (answers.q8_value) parts.push(`求めるのは「${answers.q8_value}」`);
-  return parts.join(" / ") || "回答傾向に基づき選定しました。";
+  if (answers.q2_acidity) {
+    parts.push(`酸味の好み: ${answers.q2_acidity}`);
+  }
+  if (answers.q4_timing) {
+    parts.push(`飲むタイミング: ${answers.q4_timing}`);
+  }
+  if (answers.q8_value) {
+    parts.push(`重視する価値: ${answers.q8_value}`);
+  }
+  return parts.join(" / ") || "好みに合わせて選びました。";
 };
 
 const localRecommend = (answers: RecoAnswers, beans: BeanRow[], fallback: boolean): RecoResult => {
@@ -197,17 +218,14 @@ export async function POST(request: Request) {
   const answers = body.answers || {};
 
   if (!validateAnswers(answers)) {
-    return NextResponse.json(
-      { error: "8問すべてに回答してください。" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "8つの質問にすべて回答してください。" }, { status: 400 });
   }
 
   const { beans, fallback } = await fetchBeans();
   const result = localRecommend(answers, beans, fallback);
 
   if (!result?.primary) {
-    return NextResponse.json({ error: "レコメンドを生成できませんでした。" }, { status: 500 });
+    return NextResponse.json({ error: "おすすめを生成できませんでした。" }, { status: 500 });
   }
 
   let insertedId: string | null = null;

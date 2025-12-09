@@ -87,7 +87,7 @@ export default function RecommenderQuestionsPage() {
       }
       const resultId = json?.id || "";
       router.push(resultId ? `/recommender/result?id=${resultId}` : "/recommender/result");
-    } catch (err) {
+    } catch {
       setError("通信に失敗しました。ネットワークを確認してください。");
     } finally {
       setSubmitting(false);

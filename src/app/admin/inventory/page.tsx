@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type StockRow = {
@@ -29,16 +29,16 @@ export default function InventoryPage() {
   const [newBean, setNewBean] = useState("");
   const [newGram, setNewGram] = useState(0);
 
-  const getAuthHeaders = async () => {
+  const getAuthHeaders = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) {
       throw new Error("認証情報がありません");
     }
     return { Authorization: `Bearer ${token}` };
-  };
+  }, [supabase]);
 
-  const fetchStocks = async () => {
+  const fetchStocks = useCallback(async () => {
     setLoading(true);
     setState({ status: "idle" });
     try {
@@ -62,9 +62,9 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getAuthHeaders]);
 
-  const fetchMenu = async () => {
+  const fetchMenu = useCallback(async () => {
     try {
       const headers = await getAuthHeaders();
       const res = await fetch("/api/admin/menu", { headers });
@@ -74,14 +74,12 @@ export default function InventoryPage() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [getAuthHeaders]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchStocks();
     fetchMenu();
-  }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }, [fetchStocks, fetchMenu]);
 
   const updateStock = async (beanName: string, deltaGram: number) => {
     setState({ status: "loading" });
@@ -120,14 +118,10 @@ export default function InventoryPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-6">
-        <p className="text-xs uppercase tracking-[0.18em] text-gray-500">
-          Inventory
-        </p>
-        <h1 className="text-2xl font-semibold text-[#1c1c1c]">
-          在庫一覧・更新
-        </h1>
+        <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Inventory</p>
+        <h1 className="text-2xl font-semibold text-[#1c1c1c]">在庫一覧・更新</h1>
         <p className="text-sm text-gray-600">
-          bean_stock の在庫を増減できます。SOLD OUT 表示の判定にも使われます。
+          bean_stocks の在庫を増減できます。SOLD OUT 表示の判定にも使われます。
         </p>
       </header>
 
@@ -149,15 +143,9 @@ export default function InventoryPage() {
               <tbody>
                 {getMergedRows(rows, menuItems).map((row) => (
                   <tr key={row.bean_name} className="border-t border-[#f0f0f0]">
-                    <td className="px-3 py-2 font-semibold text-[#1c1c1c]">
-                      {row.bean_name}
-                    </td>
-                    <td className="px-3 py-2 text-gray-600">
-                      {row.product_id || "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {row.stock_grams ?? 0}g
-                    </td>
+                    <td className="px-3 py-2 font-semibold text-[#1c1c1c]">{row.bean_name}</td>
+                    <td className="px-3 py-2 text-gray-600">{row.product_id || "-"}</td>
+                    <td className="px-3 py-2">{row.stock_grams ?? 0}g</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-2">
                         {[100, 500, 1000].map((delta) => (
@@ -252,11 +240,9 @@ const getMergedRows = (stocks: StockRow[], menus: MenuRow[]) => {
       map.set(m.name, {
         bean_name: m.name,
         product_id: m.id,
-        green_stock_gram: 0,
+        stock_grams: 0,
       });
     }
   });
-  return Array.from(map.values()).sort((a, b) =>
-    a.bean_name.localeCompare(b.bean_name)
-  );
+  return Array.from(map.values()).sort((a, b) => a.bean_name.localeCompare(b.bean_name));
 };

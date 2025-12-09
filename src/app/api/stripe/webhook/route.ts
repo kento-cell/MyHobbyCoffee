@@ -19,7 +19,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
   }
 
-  const signature = headers().get("stripe-signature");
+  const headerList = await headers();
+  const signature = headerList.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!signature || !webhookSecret) {
@@ -40,23 +41,25 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
 
     const metadata = session.metadata || {};
-    const productId = metadata.productId;
     const productName = metadata.productName || "Unknown product";
-    const roastId = metadata.roastId || null;
+    const roastLabel = metadata.roastId || metadata.roast || "unknown";
     const gram = Number(metadata.gram || 0);
     const qty = Number(metadata.qty || 1);
 
     const totalAmount = Math.round((session.amount_total || 0) / 100);
-    const customerEmail = session.customer_details?.email || "";
+    const customerEmail =
+      session.customer_details?.email ||
+      metadata.customerEmail ||
+      "unknown@example.com";
 
     let tasteStart: Date | null = null;
     let tasteEnd: Date | null = null;
     let expiryDate: Date | null = null;
-    if (roastId) {
+    if (metadata.roastId) {
       const { data: roastRow } = await supabaseService
         .from("roast_profiles")
         .select("*")
-        .eq("id", roastId)
+        .eq("id", metadata.roastId)
         .maybeSingle();
 
       if (roastRow) {
@@ -73,17 +76,31 @@ export async function POST(req: Request) {
       .eq("bean_name", productName)
       .maybeSingle();
 
-    await supabaseService.from("orders").insert({
-      stripe_session_id: session.id,
-      customer_email: customerEmail,
-      total_amount: totalAmount,
-      roast_id: roastId,
-      gram,
-      product_id: productId,
+    const { data: createdOrder, error: orderError } = await supabaseService
+      .from("orders")
+      .insert({
+        email: customerEmail,
+        total_amount: totalAmount,
+        status: "paid",
+        roasted_at: null,
+      })
+      .select("id")
+      .single();
+
+    if (orderError) {
+      return NextResponse.json({ error: orderError.message }, { status: 500 });
+    }
+
+    const orderId = createdOrder?.id as string | undefined;
+    const unitPrice = qty > 0 ? Math.round(totalAmount / qty) : Math.max(totalAmount, 0);
+
+    await supabaseService.from("order_items").insert({
+      order_id: orderId,
       product_name: productName,
-      taste_start: tasteStart ? tasteStart.toISOString() : null,
-      taste_end: tasteEnd ? tasteEnd.toISOString() : null,
-      expiry_date: expiryDate ? expiryDate.toISOString() : null,
+      roast: roastLabel,
+      grams: gram * qty,
+      unit_price: unitPrice,
+      subtotal: totalAmount,
     });
 
     if (beanRow) {
@@ -100,12 +117,12 @@ export async function POST(req: Request) {
     }
 
     const notifyRecipient = process.env.GMAIL_SENDER || customerEmail;
-    const subject = `注文通知（${productName}）`;
+    const subject = `注文通知: ${productName}`;
     const body = [
       `注文ID: ${session.id}`,
-      `商品名: ${productName}`,
+      `商品: ${productName}`,
       `グラム数: ${gram}g x ${qty}`,
-      `焙煎度: ${roastId || "未指定"}`,
+      `焙煎度: ${roastLabel || "未設定"}`,
       `購入日時: ${new Date().toISOString()}`,
       `飲み頃: ${
         tasteStart && tasteEnd

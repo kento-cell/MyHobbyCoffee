@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { QtySelector } from "../_components/qty-selector";
 import { useCartStore, calculateUnitPrice } from "@/store/cart";
 
@@ -14,6 +15,54 @@ export default function CartPage() {
   const clearCart = useCartStore((state) => state.clearCart);
   const totalQty = useCartStore((state) => state.totalQuantity());
   const totalAmount = useCartStore((state) => state.totalAmount());
+  const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "loading">(
+    "idle"
+  );
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const handleCheckout = async () => {
+    setCheckoutError(null);
+    if (items.length === 0) {
+      setCheckoutError("カートが空です。商品を追加してください。");
+      return;
+    }
+    if (items.length > 1) {
+      setCheckoutError("Stripe決済は1商品ずつ対応です。カートを1件にしてください。");
+      return;
+    }
+
+    const item = items[0];
+    const gram = Math.max(100, item.selectedGram ?? item.baseGram ?? 100);
+
+    setCheckoutStatus("loading");
+    try {
+      const res = await fetch("/api/order/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: item.productId,
+          qty: item.qty,
+          gram,
+          roastId: item.selectedRoast,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || `HTTP ${res.status}`);
+      }
+      if (!json?.url || typeof json.url !== "string") {
+        throw new Error("決済URLの生成に失敗しました。");
+      }
+      window.location.href = json.url;
+    } catch (err) {
+      setCheckoutError(
+        err instanceof Error ? err.message : "決済に失敗しました。再度お試しください。"
+      );
+    } finally {
+      setCheckoutStatus("idle");
+    }
+  };
 
   return (
     <main className="mx-auto max-w-5xl px-6 pb-24 pt-12">
@@ -130,15 +179,17 @@ export default function CartPage() {
                 {formatPrice(totalAmount)}
               </span>
             </div>
-            <p className="text-xs text-gray-500">
-              Stripe 連携は後日追加予定のため、現在は UI のみです。
-            </p>
             <button
               type="button"
-              className="flex w-full items-center justify-center rounded-full bg-[#a4de02] px-5 py-3 text-sm font-semibold text-[#0f1c0a] shadow-[0_14px_44px_rgba(164,222,2,0.5)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_52px_rgba(164,222,2,0.6)]"
+              onClick={handleCheckout}
+              disabled={checkoutStatus === "loading"}
+              className="flex w-full items-center justify-center rounded-full bg-[#a4de02] px-5 py-3 text-sm font-semibold text-[#0f1c0a] shadow-[0_14px_44px_rgba(164,222,2,0.5)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_52px_rgba(164,222,2,0.6)] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              購入へ進む (UI のみ)
+              {checkoutStatus === "loading" ? "Stripe 決済へ遷移中..." : "Stripe で支払う"}
             </button>
+            <p className="text-xs text-gray-500">
+              Stripe 決済は1商品ずつ対応しています。カートに複数ある場合は1件に絞ってください。
+            </p>
             <button
               type="button"
               onClick={clearCart}
@@ -146,6 +197,11 @@ export default function CartPage() {
             >
               カートを空にする
             </button>
+            {checkoutError && (
+              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {checkoutError}
+              </div>
+            )}
           </aside>
         </div>
       )}

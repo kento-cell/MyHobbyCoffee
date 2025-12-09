@@ -12,6 +12,16 @@ type Body = {
 
 const unauthorized = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+const adminEmailAllowlist = (
+  process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || ""
+)
+  .split(",")
+  .map((v) => v.trim().toLowerCase())
+  .filter(Boolean);
+
+const isAllowlisted = (email?: string | null) =>
+  email ? adminEmailAllowlist.includes(email.toLowerCase()) : false;
+
 async function requireAdmin(request: Request) {
   if (!supabaseService) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
@@ -21,7 +31,8 @@ async function requireAdmin(request: Request) {
   if (!token) return unauthorized;
   const { data, error } = await supabaseService.auth.getUser(token);
   const role = data?.user?.app_metadata?.role;
-  if (error || !data?.user || role !== "admin") return unauthorized;
+  const email = data?.user?.email;
+  if (error || !data?.user || (role !== "admin" && !isAllowlisted(email))) return unauthorized;
   return null;
 }
 

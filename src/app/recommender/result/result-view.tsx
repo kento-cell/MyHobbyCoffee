@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -12,25 +12,29 @@ type RecoResult = {
   fallback?: boolean;
 };
 
-export function ResultView({ initialResult }: { initialResult: RecoResult | null }) {
-  const router = useRouter();
-  const [result, setResult] = useState<RecoResult | null>(initialResult);
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
+const loadInitialResult = (initialResult: RecoResult | null) => {
+  if (typeof window === "undefined") return initialResult;
+  if (initialResult?.primary) {
     try {
-      if (initialResult?.primary) {
-        window.sessionStorage.setItem("reco:last-result", JSON.stringify(initialResult));
-        return;
-      }
-      const cached = window.sessionStorage.getItem("reco:last-result");
-      if (cached) {
-        setResult(JSON.parse(cached) as RecoResult);
-      }
+      window.sessionStorage.setItem("reco:last-result", JSON.stringify(initialResult));
     } catch {
       // ignore storage errors
     }
-  }, [initialResult]);
+    return initialResult;
+  }
+  try {
+    const cached = window.sessionStorage.getItem("reco:last-result");
+    if (cached) return JSON.parse(cached) as RecoResult;
+  } catch {
+    // ignore parse errors
+  }
+  return initialResult;
+};
+
+export function ResultView({ initialResult }: { initialResult: RecoResult | null }) {
+  const router = useRouter();
+  const [result] = useState<RecoResult | null>(() => loadInitialResult(initialResult));
+  const [index, setIndex] = useState(0);
 
   const deck = useMemo(() => {
     if (!result) return [];
@@ -42,11 +46,8 @@ export function ResultView({ initialResult }: { initialResult: RecoResult | null
     return list.filter((item) => item && item.name);
   }, [result]);
 
-  useEffect(() => {
-    setIndex(0);
-  }, [deck.length]);
-
-  const current = deck[index];
+  const safeIndex = deck.length === 0 ? 0 : Math.min(index, deck.length - 1);
+  const current = deck[safeIndex];
   const fallback = result?.fallback;
 
   if (!current) {
@@ -69,7 +70,11 @@ export function ResultView({ initialResult }: { initialResult: RecoResult | null
     );
   }
 
-  const goNext = () => setIndex((prev) => Math.min(prev + 1, deck.length));
+  const goNext = () =>
+    setIndex((prev) => {
+      if (deck.length === 0) return 0;
+      return Math.min(prev + 1, deck.length - 1);
+    });
 
   const handleLike = () => {
     if (current?.id) {
@@ -89,16 +94,16 @@ export function ResultView({ initialResult }: { initialResult: RecoResult | null
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-gray-600">AI Coffee Match</p>
           <h1 className="mt-2 text-3xl font-semibold text-[#1c1c1c]">
-            {fallback ? "入荷待ちですが、あなたへのおすすめ" : "今の在庫から選んだおすすめ"}
+            {fallback ? "入荷待ちのおすすめ" : "在庫ありのおすすめ"}
           </h1>
           <p className="text-sm text-gray-700">
             {fallback
-              ? "現在在庫が0件のため、入荷待ちとして最適な豆を提案しています。入荷後にぜひお試しください。"
-              : "在庫ありの豆だけから最適解を提示しています。"}
+              ? "現在在庫切れですが、入荷時に試してほしい一杯です。"
+              : "在庫のある商品から、あなたに合う一杯を選びました。"}
           </p>
         </div>
         <span className="text-xs font-semibold text-gray-500">
-          {Math.min(index + 1, deck.length)} / {deck.length}
+          {Math.min(safeIndex + 1, deck.length)} / {deck.length}
         </span>
       </div>
 
@@ -107,11 +112,11 @@ export function ResultView({ initialResult }: { initialResult: RecoResult | null
         <div className="absolute -left-10 bottom-0 h-28 w-28 rounded-full bg-[#1f3b08]/10 blur-3xl" />
         <div className="relative space-y-4">
           <p className="text-sm font-semibold text-[#1f3b08]">
-            🎉 {fallback ? "入荷待ち・あなたに合う一杯候補" : "在庫あり・いまのイチ押し"}
+            🎉 {fallback ? "入荷待ち・あなたに合う一杯候補" : "在庫あり・いち押し"}
           </p>
           <h2 className="text-3xl font-semibold text-[#1c1c1c]">{current.name}</h2>
           {current.reason && (
-            <p className="text-sm leading-relaxed text-gray-700">理由：{current.reason}</p>
+            <p className="text-sm leading-relaxed text-gray-700">おすすめ理由: {current.reason}</p>
           )}
           <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 sm:max-w-md">
             <span className="rounded-full bg-[#f7fbf1] px-3 py-2 text-[#1f3b08]">
@@ -129,7 +134,7 @@ export function ResultView({ initialResult }: { initialResult: RecoResult | null
             onClick={handleSkip}
             className="hidden rounded-full border border-[#e0e0e0] px-6 py-3 text-sm font-semibold text-[#1c1c1c] transition hover:-translate-y-[1px] hover:bg-[#f7f7f7] sm:inline-flex"
           >
-            また今度！
+            また今度
           </button>
 
           <div className="flex flex-1 items-center justify-center">
