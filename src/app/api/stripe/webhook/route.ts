@@ -8,10 +8,38 @@ import type Stripe from "stripe";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+const zeroDecimalCurrencies = new Set([
+  "bif",
+  "clp",
+  "djf",
+  "gnf",
+  "jpy",
+  "kmf",
+  "krw",
+  "mga",
+  "pyg",
+  "rwf",
+  "ugx",
+  "vnd",
+  "vuv",
+  "xaf",
+  "xof",
+  "xpf",
+]);
+
 const addDays = (date: Date, days: number) => {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
+};
+
+const toCurrencyAmount = (
+  amount: number | null | undefined,
+  currency?: string | null
+) => {
+  const value = amount ?? 0;
+  const code = currency?.toLowerCase();
+  return code && zeroDecimalCurrencies.has(code) ? value : Math.round(value / 100);
 };
 
 export async function POST(req: Request) {
@@ -39,27 +67,64 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
+    const currency = session.currency || "jpy";
 
-    const metadata = session.metadata || {};
-    const productName = metadata.productName || "Unknown product";
-    const roastLabel = metadata.roastId || metadata.roast || "unknown";
-    const gram = Number(metadata.gram || 0);
-    const qty = Number(metadata.qty || 1);
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+      expand: ["data.price.product"],
+      limit: 100,
+    });
 
-    const totalAmount = Math.round((session.amount_total || 0) / 100);
+    const normalizedItems = lineItems.data.map((item) => {
+      const productData = (item.price?.product as Stripe.Product | null) ?? null;
+      const meta = productData?.metadata || {};
+      const productName =
+        productData?.name ||
+        item.description ||
+        meta.productName ||
+        "Unknown product";
+      const gramValue = Number(meta.gram ?? meta.weight ?? 0);
+      const gram = Number.isFinite(gramValue) ? gramValue : 0;
+      const qty = item.quantity ?? 1;
+      const roastId = meta.roastId || "";
+      const roastLabel = meta.roastLabel || meta.roast || roastId || "";
+      const subtotal = toCurrencyAmount(
+        item.amount_total ?? item.amount_subtotal ?? 0,
+        currency
+      );
+      const unitPrice = qty > 0 ? Math.round(subtotal / qty) : subtotal;
+
+      return {
+        productName,
+        productId:
+          (typeof productData?.id === "string" ? productData.id : "") ||
+          (typeof meta.productId === "string" ? meta.productId : ""),
+        gram,
+        qty,
+        roastId,
+        roastLabel,
+        subtotal,
+        unitPrice,
+      };
+    });
+
+    const totalAmount =
+      normalizedItems.reduce((sum, item) => sum + item.subtotal, 0) ||
+      toCurrencyAmount(session.amount_total ?? 0, currency);
+
     const customerEmail =
       session.customer_details?.email ||
-      metadata.customerEmail ||
+      session.metadata?.customerEmail ||
       "unknown@example.com";
 
     let tasteStart: Date | null = null;
     let tasteEnd: Date | null = null;
     let expiryDate: Date | null = null;
-    if (metadata.roastId) {
+    const primaryRoastId = normalizedItems.find((item) => item.roastId)?.roastId;
+    if (primaryRoastId) {
       const { data: roastRow } = await supabaseService
         .from("roast_profiles")
         .select("*")
-        .eq("id", metadata.roastId)
+        .eq("id", primaryRoastId)
         .maybeSingle();
 
       if (roastRow) {
@@ -69,12 +134,6 @@ export async function POST(req: Request) {
         expiryDate = addDays(baseDate, roastRow.expiry_days);
       }
     }
-
-    const { data: beanRow } = await supabaseService
-      .from("bean_stocks")
-      .select("id, bean_name, stock_grams")
-      .eq("bean_name", productName)
-      .maybeSingle();
 
     const { data: createdOrder, error: orderError } = await supabaseService
       .from("orders")
@@ -92,51 +151,84 @@ export async function POST(req: Request) {
     }
 
     const orderId = createdOrder?.id as string | undefined;
-    const unitPrice = qty > 0 ? Math.round(totalAmount / qty) : Math.max(totalAmount, 0);
 
-    await supabaseService.from("order_items").insert({
-      order_id: orderId,
-      product_name: productName,
-      roast: roastLabel,
-      grams: gram * qty,
-      unit_price: unitPrice,
-      subtotal: totalAmount,
-    });
+    if (orderId && normalizedItems.length > 0) {
+      const { error: itemsError } = await supabaseService.from("order_items").insert(
+        normalizedItems.map((item) => ({
+          order_id: orderId,
+          product_name: item.productName,
+          roast: item.roastLabel || item.roastId || "unknown",
+          grams: (item.gram || 0) * (item.qty || 1),
+          unit_price: item.unitPrice,
+          subtotal: item.subtotal,
+        }))
+      );
 
-    if (beanRow) {
-      const required = gram * qty;
-      const currentStock = beanRow.stock_grams ?? 0;
-      const nextStock = Math.max(0, currentStock - required);
-      await supabaseService
+      if (itemsError) {
+        return NextResponse.json({ error: itemsError.message }, { status: 500 });
+      }
+    }
+
+    for (const item of normalizedItems) {
+      if (!item.productName) continue;
+      const required = (item.gram || 0) * (item.qty || 1);
+      if (required <= 0) continue;
+
+      const { data: beanRow } = await supabaseService
         .from("bean_stocks")
-        .update({
-          stock_grams: nextStock,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", beanRow.id);
+        .select("id, stock_grams")
+        .eq("bean_name", item.productName)
+        .maybeSingle();
+
+      if (beanRow) {
+        const nextStock = Math.max(0, (beanRow.stock_grams ?? 0) - required);
+        await supabaseService
+          .from("bean_stocks")
+          .update({
+            stock_grams: nextStock,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", beanRow.id);
+      }
     }
 
     const notifyRecipient = process.env.GMAIL_SENDER || customerEmail;
-    const subject = `注文通知: ${productName}`;
-    const body = [
-      `注文ID: ${session.id}`,
-      `商品: ${productName}`,
-      `グラム数: ${gram}g x ${qty}`,
-      `焙煎度: ${roastLabel || "未設定"}`,
-      `購入日時: ${new Date().toISOString()}`,
-      `飲み頃: ${
-        tasteStart && tasteEnd
-          ? `${tasteStart.toISOString().slice(0, 10)} 〜 ${tasteEnd
-              .toISOString()
-              .slice(0, 10)}`
-          : "未計算"
-      }`,
-      `賞味期限: ${expiryDate ? expiryDate.toISOString().slice(0, 10) : "未計算"}`,
-      `Stripe 金額: ¥${totalAmount.toLocaleString()}`,
-      `顧客メール: ${customerEmail}`,
-    ].join("\n");
+    const subjectBase = normalizedItems[0]?.productName || "注文";
+    const subject =
+      normalizedItems.length > 1
+        ? `注文通知: ${subjectBase} 他${normalizedItems.length - 1}件`
+        : `注文通知: ${subjectBase}`;
 
-    await sendOrderNotification(notifyRecipient, subject, body);
+    const itemsDescription =
+      normalizedItems
+        .map(
+          (item) =>
+            `- ${item.productName} | ${item.gram}g x ${item.qty} | 焙煎: ${
+              item.roastLabel || "未設定"
+            } | 小計: ¥${item.subtotal.toLocaleString()}`
+        )
+        .join("\n") || "- 商品情報なし";
+
+    const messageLines = [
+      `注文ID: ${session.id}`,
+      `合計: ¥${totalAmount.toLocaleString()}`,
+      `顧客メール: ${customerEmail}`,
+      `商品内訳:\n${itemsDescription}`,
+    ];
+
+    if (tasteStart && tasteEnd) {
+      messageLines.push(
+        `飲み頃: ${tasteStart.toISOString().slice(0, 10)} 〜 ${tasteEnd
+          .toISOString()
+          .slice(0, 10)}`
+      );
+    }
+
+    if (expiryDate) {
+      messageLines.push(`賞味期限: ${expiryDate.toISOString().slice(0, 10)}`);
+    }
+
+    await sendOrderNotification(notifyRecipient, subject, messageLines.join("\n"));
   }
 
   return NextResponse.json({ received: true });

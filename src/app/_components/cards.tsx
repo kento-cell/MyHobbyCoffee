@@ -14,6 +14,17 @@ type ProductCardProps = {
   href?: string;
   enableAddToCart?: boolean;
   soldOut?: boolean;
+  stockGrams?: number;
+};
+
+const parseNumber = (value: number | string | undefined | null, fallback = 0) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : fallback;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^\d.-]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  return fallback;
 };
 
 export const ProductCard = ({
@@ -21,11 +32,16 @@ export const ProductCard = ({
   href,
   enableAddToCart,
   soldOut,
+  stockGrams,
 }: ProductCardProps) => {
   const sortRoastOptions = (options: string[]) =>
     [...options].sort((a, b) => {
-      const rank = (v: string) =>
-        v.includes("浅") ? 0 : v.includes("中") ? 1 : v.includes("深") ? 2 : 3;
+      const rank = (v: string) => {
+        if (v.includes("\u6d45")) return 0; // light roast
+        if (v.includes("\u4e2d")) return 1; // medium
+        if (v.includes("\u6df1")) return 2; // dark
+        return 3;
+      };
       const ra = rank(a);
       const rb = rank(b);
       if (ra !== rb) return ra - rb;
@@ -34,16 +50,8 @@ export const ProductCard = ({
 
   const router = useRouter();
   const [qty, setQty] = useState(1);
-  const normalizedAmount =
-    typeof item.amount === "number" && Number.isFinite(item.amount)
-      ? item.amount
-      : Number.isFinite(Number(item.amount))
-        ? Number(item.amount)
-        : 100;
-  const baseGram = Math.max(
-    100,
-    Math.round(normalizedAmount / 100) * 100
-  );
+  const normalizedAmount = parseNumber(item.amount, 100) || 100;
+  const baseGram = Math.max(100, Math.round(normalizedAmount / 100) * 100);
   const gramOptions = Array.from(
     { length: Math.max(1, Math.floor((1000 - baseGram) / 100) + 1) },
     (_, i) => baseGram + i * 100
@@ -56,9 +64,7 @@ export const ProductCard = ({
         ? [item.roast]
         : []
   );
-  const [selectedRoast, setSelectedRoast] = useState<string | undefined>(
-    roastOptions[0]
-  );
+  const [selectedRoast, setSelectedRoast] = useState<string | undefined>(roastOptions[0]);
   const [showRaw, setShowRaw] = useState(false);
   const [rawLoading, setRawLoading] = useState(false);
   const [rawData, setRawData] = useState<unknown | null>(null);
@@ -75,9 +81,7 @@ export const ProductCard = ({
       setRawLoading(true);
       setRawError(null);
       try {
-        const res = await fetch(`/api/menu/${item.id}`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(`/api/menu/${item.id}`, { signal: controller.signal });
         if (!res.ok) {
           setRawError(`HTTP ${res.status}`);
           setRawData(null);
@@ -98,16 +102,11 @@ export const ProductCard = ({
     return () => controller.abort();
   }, [showRaw, item?.id]);
 
-  const basePrice =
-    typeof item.price === "number" ? item.price : Number(item.price) || 0;
+  const basePrice = parseNumber(item.price, 0);
   const priceLabel =
-    basePrice > 0
-      ? `¥${basePrice.toLocaleString()} / ${baseGram}g`
-      : "価格はお問い合わせください";
+    basePrice > 0 ? `¥${basePrice.toLocaleString()} / ${baseGram}g` : "価格はお問い合わせください";
   const selectedPrice =
-    basePrice > 0
-      ? Math.round((basePrice * Math.max(baseGram, selectedGram)) / baseGram)
-      : 0;
+    basePrice > 0 ? Math.round((basePrice * Math.max(baseGram, selectedGram)) / baseGram) : 0;
 
   const handleNavigate = () => {
     if (!href || soldOut) return;
@@ -139,19 +138,26 @@ export const ProductCard = ({
       },
       qty
     );
-    pushToast(
-      `${item.name} を ${selectedGram}g × ${qty} 点カートに追加しました`
-    );
+    pushToast(`${item.name} を ${selectedGram}g × ${qty} 点カートに追加しました`);
   };
+
+  const stockLabel =
+    typeof stockGrams === "number"
+      ? stockGrams <= 0
+        ? "SOLD OUT"
+        : stockGrams <= 500
+          ? `残り ${stockGrams}g`
+          : `在庫 ${stockGrams}g`
+      : null;
 
   const cover = (
     <div className="relative h-52 w-full overflow-hidden">
       {soldOut && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 text-sm font-semibold uppercase tracking-[0.2em] text-white">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 text-sm font-semibold uppercase tracking-[0.2em] text-white">
           SOLD OUT
         </div>
       )}
-      <div className="absolute left-0 top-0 h-full w-1 bg-[#a4de02]" />
+      <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-[#a4de02] to-[#74c000]" />
       <Image
         src={getImageUrl(item.image?.url)}
         alt={item.name}
@@ -174,6 +180,8 @@ export const ProductCard = ({
       onClick={href ? handleNavigate : undefined}
       onKeyDown={href ? handleKeyDown : undefined}
     >
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#a4de02] via-[#c5ec72] to-[#7bc210]" />
+
       {href && !soldOut ? (
         <Link
           href={href}
@@ -187,13 +195,26 @@ export const ProductCard = ({
       )}
 
       <div className="flex flex-1 flex-col gap-3 px-5 pb-6 pt-5">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-gray-500">
+        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.12em] text-gray-500">
           <span className="inline-flex items-center gap-2 rounded-full bg-[#f5f9eb] px-3 py-1 text-[11px] text-[#3f5c1f]">
-            Light roast craft
+            Roastery selection
           </span>
           {item.roast && (
             <span className="text-gray-600">
               {Array.isArray(item.roast) ? item.roast.join(" / ") : item.roast}
+            </span>
+          )}
+          {stockLabel && (
+            <span
+              className={`ml-auto inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                soldOut
+                  ? "bg-red-50 text-red-700"
+                  : stockGrams && stockGrams <= 500
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-[#eef7d8] text-[#1f3b08]"
+              }`}
+            >
+              {stockLabel}
             </span>
           )}
         </div>
@@ -212,23 +233,17 @@ export const ProductCard = ({
           )}
         </h3>
 
-        {item.origin && (
-          <p className="text-sm text-gray-600">Origin: {item.origin}</p>
-        )}
+        {item.origin && <p className="text-sm text-gray-600">Origin: {item.origin}</p>}
 
         {item.description && (
-          <p className="line-clamp-3 text-sm leading-relaxed text-gray-700">
-            {item.description}
-          </p>
+          <p className="line-clamp-3 text-sm leading-relaxed text-gray-700">{item.description}</p>
         )}
 
         <div className="mt-auto flex items-center justify-between pt-1">
-          <span className="text-lg font-semibold text-[#1f3b08]">
-            {priceLabel}
-          </span>
+          <span className="text-lg font-semibold text-[#1f3b08]">{priceLabel}</span>
           {href && !soldOut && (
             <span className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
-              View detail
+              詳しく見る
             </span>
           )}
           {soldOut && (
@@ -240,7 +255,7 @@ export const ProductCard = ({
 
         {enableAddToCart && (
           <div
-            className="mt-3 flex flex-col gap-3"
+            className="mt-3 flex flex-col gap-3 rounded-xl bg-[#f7fbf1] px-3 py-3"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
@@ -254,9 +269,7 @@ export const ProductCard = ({
                   className="rounded-lg border border-[#dcdcdc] bg-white px-2 py-1"
                   disabled={soldOut}
                 >
-                  {roastOptions.length === 0 && (
-                    <option value="">未指定</option>
-                  )}
+                  {roastOptions.length === 0 && <option value="">未設定</option>}
                   {roastOptions.map((r) => (
                     <option key={r} value={r}>
                       {r}
@@ -281,10 +294,7 @@ export const ProductCard = ({
               </label>
             </div>
             <div className="text-xs font-semibold text-[#1f3b08]">
-              選択グラム価格:{" "}
-              {basePrice > 0
-                ? `¥${selectedPrice.toLocaleString()}`
-                : "価格はお問い合わせください"}
+              選択グラム価格: {basePrice > 0 ? `¥${selectedPrice.toLocaleString()}` : "価格はお問い合わせください"}
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <button

@@ -6,18 +6,21 @@ import { QtySelector } from "../../_components/qty-selector";
 import { useCartStore } from "@/store/cart";
 import { useToast } from "../../_components/toast-provider";
 
+const parseNumber = (value: number | string | undefined | null, fallback = 0) => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : fallback;
+  if (typeof value === "string") {
+    const cleaned = value.replace(/[^\d.-]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  return fallback;
+};
+
 const formatPrice = (price?: number | string) => {
-  if (typeof price === "number") return `¥${price.toLocaleString()}`;
-  const numeric = Number(price);
+  const numeric = parseNumber(price, NaN);
   return Number.isFinite(numeric)
     ? `¥${numeric.toLocaleString()}`
     : "価格はお問い合わせください";
-};
-
-const normalizeAmount = (amount?: number | string) => {
-  if (typeof amount === "number" && Number.isFinite(amount)) return amount;
-  const n = Number(amount);
-  return Number.isFinite(n) ? n : 100;
 };
 
 type Props = {
@@ -37,12 +40,8 @@ export const PurchasePanel = ({ item, soldOut, stockGram = 0 }: Props) => {
       return a.localeCompare(b, "ja");
     });
 
-  const basePrice =
-    typeof item.price === "number" ? item.price : Number(item.price) || 0;
-  const baseGram = Math.max(
-    100,
-    Math.round(normalizeAmount(item.amount) / 100) * 100
-  );
+  const basePrice = parseNumber(item.price, 0);
+  const baseGram = Math.max(100, Math.round(parseNumber(item.amount, 100) / 100) * 100);
   const [qty, setQty] = useState(1);
   const [gram, setGram] = useState<number>(baseGram);
   const roastOptions = sortRoastOptions(
@@ -76,9 +75,7 @@ export const PurchasePanel = ({ item, soldOut, stockGram = 0 }: Props) => {
       },
       qty
     );
-    pushToast(
-      `${item.name} を ${gram}g × ${qty} 点カートに追加しました`
-    );
+    pushToast(`${item.name} を ${gram}g × ${qty} 点カートに追加しました`);
   };
 
   const maxBuyableGram = Math.max(
@@ -148,7 +145,7 @@ export const PurchasePanel = ({ item, soldOut, stockGram = 0 }: Props) => {
             className="w-36 rounded-lg border border-[#dcdcdc] bg-white px-3 py-2"
             disabled={soldOut}
           >
-            {roastOptions.length === 0 && <option value="">未指定</option>}
+            {roastOptions.length === 0 && <option value="">未設定</option>}
             {roastOptions.map((r) => (
               <option key={r} value={r}>
                 {r}

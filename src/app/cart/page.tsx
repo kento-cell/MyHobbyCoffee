@@ -8,6 +8,12 @@ import { useCartStore, calculateUnitPrice } from "@/store/cart";
 
 const formatPrice = (price: number) => `¥${price.toLocaleString()}`;
 
+type Shortage = {
+  productName: string;
+  required: number;
+  available: number;
+};
+
 export default function CartPage() {
   const items = useCartStore((state) => state.items);
   const updateQty = useCartStore((state) => state.updateQty);
@@ -15,40 +21,44 @@ export default function CartPage() {
   const clearCart = useCartStore((state) => state.clearCart);
   const totalQty = useCartStore((state) => state.totalQuantity());
   const totalAmount = useCartStore((state) => state.totalAmount());
-  const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "loading">(
-    "idle"
-  );
+  const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "loading">("idle");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [shortages, setShortages] = useState<Shortage[]>([]);
 
   const handleCheckout = async () => {
     setCheckoutError(null);
+    setShortages([]);
     if (items.length === 0) {
       setCheckoutError("カートが空です。商品を追加してください。");
       return;
     }
-    if (items.length > 1) {
-      setCheckoutError("Stripe決済は1商品ずつ対応です。カートを1件にしてください。");
-      return;
-    }
 
-    const item = items[0];
-    const gram = Math.max(100, item.selectedGram ?? item.baseGram ?? 100);
+    const payloadItems = items.map((item) => ({
+      productId: item.productId,
+      qty: item.qty,
+      gram: Math.max(100, item.selectedGram ?? item.baseGram ?? 100),
+      roastId: item.selectedRoast,
+    }));
 
     setCheckoutStatus("loading");
     try {
       const res = await fetch("/api/order/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: item.productId,
-          qty: item.qty,
-          gram,
-          roastId: item.selectedRoast,
-        }),
+        body: JSON.stringify({ items: payloadItems }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (Array.isArray(json?.shortages)) {
+          setShortages(
+            json.shortages.map((s: any) => ({
+              productName: String(s.productName || ""),
+              required: Number(s.required || 0),
+              available: Number(s.available || 0),
+            }))
+          );
+        }
         throw new Error(json?.error || `HTTP ${res.status}`);
       }
       if (!json?.url || typeof json.url !== "string") {
@@ -57,7 +67,9 @@ export default function CartPage() {
       window.location.href = json.url;
     } catch (err) {
       setCheckoutError(
-        err instanceof Error ? err.message : "決済に失敗しました。再度お試しください。"
+        err instanceof Error
+          ? err.message
+          : "決済に失敗しました。時間をおいて再度お試しください。"
       );
     } finally {
       setCheckoutStatus("idle");
@@ -70,9 +82,7 @@ export default function CartPage() {
         <p className="text-xs uppercase tracking-[0.22em] text-gray-500">
           Cart
         </p>
-        <h1 className="text-3xl font-semibold text-[#1c1c1c]">
-          カートの中身
-        </h1>
+        <h1 className="text-3xl font-semibold text-[#1c1c1c]">カートの中身</h1>
         <p className="text-sm text-gray-700">
           microCMS の価格をそのまま利用し、数量を自由に調整できます。
         </p>
@@ -84,7 +94,7 @@ export default function CartPage() {
             カートは空です。
           </p>
           <p className="mt-2 text-sm text-gray-600">
-            メニューからお好みの豆をカートに追加してください。
+            メニューからお好みの商品をカートに追加してください。
           </p>
           <Link
             href="/menu"
@@ -123,28 +133,28 @@ export default function CartPage() {
                   <div className="flex flex-1 flex-col gap-2">
                     <Link
                       href={`/menu/${item.productId}`}
-                    className="text-lg font-semibold text-[#1c1c1c] hover:text-[#1f3b08]"
-                  >
-                    {item.title}
-                  </Link>
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
-                    <span className="rounded-full bg-[#f2f7e8] px-3 py-1 text-[#1f3b08]">
-                      {item.selectedGram}g
-                    </span>
-                    {item.selectedRoast && (
-                      <span className="rounded-full bg-[#eef2f7] px-3 py-1 text-[#1f2b3b]">
-                        {item.selectedRoast}
+                      className="text-lg font-semibold text-[#1c1c1c] hover:text-[#1f3b08]"
+                    >
+                      {item.title}
+                    </Link>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-700">
+                      <span className="rounded-full bg-[#f2f7e8] px-3 py-1 text-[#1f3b08]">
+                        {item.selectedGram}g
                       </span>
-                    )}
-                    <span className="text-gray-600">数量: {item.qty} 点</span>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    単価 {formatPrice(unitPrice)} / {item.selectedGram}g
-                    <span className="ml-2 text-xs text-gray-500">
-                      基準 {item.baseGram}g 価格 {formatPrice(item.price)}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
+                      {item.selectedRoast && (
+                        <span className="rounded-full bg-[#eef2f7] px-3 py-1 text-[#1f2b3b]">
+                          {item.selectedRoast}
+                        </span>
+                      )}
+                      <span className="text-gray-600">数量 {item.qty} 点</span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      単価 {formatPrice(unitPrice)} / {item.selectedGram}g
+                      <span className="ml-2 text-xs text-gray-500">
+                        基準 {item.baseGram}g 価格 {formatPrice(item.price)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
                       <QtySelector
                         value={item.qty}
                         onChange={(qty) => updateQty(item.lineId, qty)}
@@ -168,7 +178,7 @@ export default function CartPage() {
 
           <aside className="space-y-4 rounded-3xl border border-[#e8e8e8] bg-white p-6 shadow-[0_14px_40px_rgba(0,0,0,0.06)]">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">商品数</span>
+              <span className="text-sm text-gray-600">注文数</span>
               <span className="text-base font-semibold text-[#1c1c1c]">
                 {totalQty} 点
               </span>
@@ -188,7 +198,7 @@ export default function CartPage() {
               {checkoutStatus === "loading" ? "Stripe 決済へ遷移中..." : "Stripe で支払う"}
             </button>
             <p className="text-xs text-gray-500">
-              Stripe 決済は1商品ずつ対応しています。カートに複数ある場合は1件に絞ってください。
+              決済ページに移動します。数量と内容をご確認のうえお進みください。
             </p>
             <button
               type="button"
@@ -197,9 +207,18 @@ export default function CartPage() {
             >
               カートを空にする
             </button>
-            {checkoutError && (
-              <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                {checkoutError}
+            {(checkoutError || shortages.length > 0) && (
+              <div className="space-y-1 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {checkoutError && <p>{checkoutError}</p>}
+                {shortages.length > 0 && (
+                  <ul className="list-disc pl-5">
+                    {shortages.map((s) => (
+                      <li key={s.productName}>
+                        {s.productName}: 必要 {s.required}g / 在庫 {s.available}g
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </aside>

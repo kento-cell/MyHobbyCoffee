@@ -101,7 +101,7 @@ export default function AdminOrdersPage() {
   }, [fetchOrders]);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <header className="mb-6 space-y-2">
         <p className="text-xs uppercase tracking-[0.18em] text-gray-500">Orders</p>
         <h1 className="text-2xl font-semibold text-[#1c1c1c]">注文一覧</h1>
@@ -133,24 +133,24 @@ export default function AdminOrdersPage() {
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="w-full min-w-[1040px] table-auto text-sm">
             <thead>
               <tr className="text-left text-gray-500">
                 <th className="px-3 py-2">注文ID</th>
                 <th className="px-3 py-2">メール</th>
-                <th className="px-3 py-2">金額</th>
-                <th className="px-3 py-2">ステータス</th>
+                <th className="px-3 py-2 whitespace-nowrap">金額</th>
+                <th className="px-3 py-2 whitespace-nowrap">ステータス</th>
                 <th className="px-3 py-2">商品</th>
-                <th className="px-3 py-2">日時</th>
-                <th className="px-3 py-2">操作</th>
+                <th className="px-3 py-2 whitespace-nowrap">日時</th>
+                <th className="px-3 py-2 whitespace-nowrap">操作</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id} className="border-t border-[#f0f0f0] align-top">
                   <td className="px-3 py-2 font-mono text-xs text-gray-700">{order.id}</td>
-                  <td className="px-3 py-2">{order.email}</td>
-                  <td className="px-3 py-2 font-semibold text-[#1f3b08]">
+                  <td className="px-3 py-2 break-all">{order.email}</td>
+                  <td className="px-3 py-2 whitespace-nowrap font-semibold text-[#1f3b08]">
                     ¥{order.total_amount?.toLocaleString()}
                   </td>
                   <td className="px-3 py-2">
@@ -158,7 +158,7 @@ export default function AdminOrdersPage() {
                       {statusLabel(order.status)}
                     </span>
                   </td>
-                  <td className="px-3 py-2 space-y-1">
+                  <td className="px-3 py-2 space-y-1 break-words">
                     {(order.order_items || []).map((item, idx) => (
                       <div key={`${order.id}-item-${idx}`} className="text-gray-700">
                         <span className="font-semibold">{item.product_name}</span>{" "}
@@ -170,17 +170,25 @@ export default function AdminOrdersPage() {
                     ))}
                   </td>
                   <td className="px-3 py-2 text-xs text-gray-600">
-                    {order.created_at
-                      ? new Date(order.created_at).toLocaleString()
-                      : "-"}
+                    {order.created_at ? new Date(order.created_at).toLocaleString() : "-"}
                   </td>
                   <td className="px-3 py-2">
-                    <button
-                      onClick={() => updateStatus(order.id, "delivered")}
-                      className="rounded-full bg-[#a4de02] px-3 py-2 text-xs font-semibold text-[#0f1c0a] shadow-sm transition hover:-translate-y-[1px]"
-                    >
-                      納品済みにする
-                    </button>
+                    <div className="flex flex-col gap-2 whitespace-nowrap sm:flex-row">
+                      <button
+                        onClick={() => updateStatus(order.id, "delivered")}
+                        disabled={order.status === "delivered"}
+                        className="rounded-full bg-[#a4de02] px-3 py-2 text-xs font-semibold text-[#0f1c0a] shadow-sm transition hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        納品済みにする
+                      </button>
+                      <button
+                        onClick={() => updateStatus(order.id, "paid")}
+                        disabled={order.status !== "delivered"}
+                        className="rounded-full border border-[#dcdcdc] px-3 py-2 text-xs font-semibold text-[#1f3b08] transition hover:-translate-y-[1px] hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        納品済みを撤回
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

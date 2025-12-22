@@ -24,12 +24,14 @@ export default async function MenuPage() {
     getStocks(),
   ]);
 
-  const gallery =
-    topBackground?.gallery?.filter((img) => img.url) ?? [];
+  const gallery = topBackground?.gallery?.filter((img) => img.url) ?? [];
   const primaryHeroImage = topBackground?.primary ?? gallery[0];
   const collageImages = gallery.filter(
     (image) => image.url && image.url !== primaryHeroImage?.url
   );
+
+  const availableCount = contents.filter((item) => (stocks[item.name] ?? 0) > 0).length;
+  const soldOutCount = contents.length - availableCount;
 
   return (
     <main className="pb-24">
@@ -45,7 +47,9 @@ export default async function MenuPage() {
               priority
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/75 to-white" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/80 to-white" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(164,222,2,0.18),transparent_32%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_12%,rgba(35,78,19,0.08),transparent_30%)]" />
         </div>
 
         {collageImages.length > 0 && (
@@ -75,11 +79,22 @@ export default async function MenuPage() {
               Menu
             </p>
             <h1 className="text-4xl font-semibold leading-tight text-[#1c1c1c] md:text-5xl">
-              コーヒー豆一覧
+              シングルオリジンとブレンドのメニュー
             </h1>
             <p className="text-sm leading-relaxed text-gray-700 md:text-base">
-              Topbk/Topbk2 に登録した画像だけを背景に配置しています。API からの画像が無ければグラデーションのみで表示されます。
+              焙煎度・グラムを選んで注文できます。お気に入りを見つけたら、詳細ページでフレーバーノートもご確認ください。
             </p>
+            <div className="flex flex-wrap gap-3 text-xs font-semibold text-[#1f3b08]">
+              <span className="rounded-full bg-white/80 px-3 py-2 shadow-sm">
+                在庫同期: Supabase
+              </span>
+              <span className="rounded-full bg-white/80 px-3 py-2 shadow-sm">
+                画像: microCMS
+              </span>
+              <span className="rounded-full bg-white/80 px-3 py-2 shadow-sm">
+                決済: Stripe
+              </span>
+            </div>
           </div>
 
           {collageImages.length > 0 && (
@@ -107,9 +122,9 @@ export default async function MenuPage() {
         <div className="flex flex-col gap-4 rounded-2xl border border-[#e7f2cd] bg-gradient-to-r from-[#f7fbf1] via-white to-[#eef6e0] px-6 py-6 shadow-[0_14px_40px_rgba(0,0,0,0.05)] md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
             <p className="text-xs uppercase tracking-[0.18em] text-gray-600">AI Coffee Match</p>
-            <h3 className="text-xl font-semibold text-[#1c1c1c]">あなたのための豆を選びます</h3>
+            <h3 className="text-xl font-semibold text-[#1c1c1c]">迷ったら診断、相性の良い豆を提案</h3>
             <p className="text-sm text-gray-700">
-              8つの質問に答えるだけで、AI が今の気分に合う豆を診断します。時間は1分ほど。
+              好みのフレーバーを選ぶだけで、おすすめの4種をピックアップ。気になる豆はそのままカートへ。
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -117,26 +132,34 @@ export default async function MenuPage() {
               href="/recommender/questions"
               className="rounded-full bg-[#a4de02] px-5 py-3 text-sm font-semibold text-[#0f1c0a] shadow-[0_12px_34px_rgba(164,222,2,0.45)] transition hover:-translate-y-[1px]"
             >
-              AI診断スタート
+              AI診断を試す
             </Link>
             <Link
               href="/recommender/start"
               className="text-sm font-semibold text-[#1f3b08] underline-offset-4 hover:underline"
             >
-              機能の詳細を見る
+              診断の流れを見る
             </Link>
           </div>
         </div>
       </section>
 
       <section className="mx-auto mt-12 max-w-6xl px-6">
-        <div className="mb-8 flex flex-col gap-3">
-          <p className="text-xs uppercase tracking-[0.22em] text-gray-500">
-            Menu
-          </p>
-          <h2 className="text-3xl font-semibold text-[#1c1c1c]">
-            コーヒー豆一覧
-          </h2>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.22em] text-gray-500">Menu</p>
+            <h2 className="text-3xl font-semibold text-[#1c1c1c]">
+              焙煎したてのメニュー一覧
+            </h2>
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs font-semibold text-[#1f3b08]">
+            <span className="rounded-full bg-[#f5f9eb] px-3 py-2 shadow-sm">
+              在庫あり: {availableCount} 件
+            </span>
+            <span className="rounded-full bg-white px-3 py-2 shadow-sm">
+              売り切れ: {soldOutCount} 件
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -150,6 +173,7 @@ export default async function MenuPage() {
                 href={`/menu/${item.id}`}
                 enableAddToCart
                 soldOut={soldOut}
+                stockGrams={stock}
               />
             );
           })}
